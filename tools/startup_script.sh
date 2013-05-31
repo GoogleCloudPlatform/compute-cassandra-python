@@ -4,7 +4,7 @@ apt-get -y -qq update
 apt-get -y -qq upgrade
 apt-get -y -qq install dsc12
 service cassandra stop
-rm -rf /var/lib/cassandra/data/system/*
+rm -rf /var/lib/cassandra/*
 apt-get -y -qq install icedtea-7-plugin openjdk-7-jdk openjdk-7-jre openjdk-7-jre-headless
 update-java-alternatives -s java-1.7.0-openjdk-amd64
 

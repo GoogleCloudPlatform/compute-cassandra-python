@@ -35,5 +35,5 @@ if retval != 0:
 
 # cache the projectid but don't clutter stdout
 null = open(devnull, "w")
-_ = subprocess.call(["gcutil", "getproject",
-  "--project=%s" % (sys.argv[1]), "--cache_flag_values"], stdout=null)
+_ = subprocess.call(["gcutil", "getproject", "--project=%s" % (sys.argv[1]),
+  "--cache_flag_values"], stdout=null, stderr=null)

@@ -12,3 +12,281 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+"""
+"""
+
+import subprocess
+import sys
+import os
+import time
+
+# Read in global variables, edit
+# the common.py file to change any
+# global vars
+mydir = os.path.dirname(os.path.realpath(__file__))
+common = mydir + os.path.sep + "common.py"
+execfile(common, globals())
+
+NULL = open(os.devnull, "w")
+BE = BaseException
+
+# For the US, find the first region that has more than
+# one zone or raise an error
+def findZones():
+  print("=> Finding suitable region, selecting zones:"),
+  regions = subprocess.check_output(["gcutil", "--service_version",
+    API_VERSION, "--format", "names", "listregions", "--filter",
+    "name eq 'us.*'"], stderr=NULL).split('\n')[0:-1]
+  for region in regions:
+    zones = subprocess.check_output(["gcutil", "--service_version",
+      API_VERSION, "--format", "names", "listzones", "--filter",
+      "status eq UP", "--filter", "name eq '%s.*'" % region],
+      stderr=NULL).split('\n')[0:-1]
+    if len(zones) > 1:
+      print(zones)
+      return zones
+  raise BE("Error: No suitable US regions found with 2+ zones")
+
+# Create all nodes synchronously
+def createNodes(zones):
+  print("=> Creating %d '%s' '%s' nodes" % (
+    NODES_PER_ZONE*len(zones), IMAGE, MACHINE_TYPE))
+  script = "startup-script:" + os.path.dirname(os.path.realpath(__file__))
+  script += os.path.sep + "startup_script.sh"
+
+  imgPath = getImagePath()
+  if imgPath is None:
+    raise BE("Error: No matching IMAGE for '%s'" % IMAGE)
+  img = "https://www.googleapis.com/compute/%s/%s" % (API_VERSION, imgPath)
+
+  # Spin up the instances
+  for zone in zones:
+    for i in range(NODES_PER_ZONE):
+      nodename = "%s-%s-%d" % (NODE_PREFIX, zone[-1:], i)
+
+      r = subprocess.call(["gcutil", "--service_version=%s" % API_VERSION,
+        "addinstance", nodename, "--zone=%s" % zone,
+        "--machine_type=%s" % MACHINE_TYPE, "--network=default",
+        "--external_ip_address=ephemeral",
+        "--image=%s" % img, "--persistent_boot_disk=false",
+        "--synchronous_mode", "--metadata_from_file=%s" % script],
+        stdout=NULL, stderr=NULL)
+      if r != 0:
+        raise BE("Error: could not create node %s" % nodename)
+      print("--> Node %s created" % nodename)
+
+
+# Add SEED nodes to config file
+def addSeeds(cluster):
+  print("=> Adding SEED nodes to cassandra configs")
+  # Determine SEED nodes, first node from each zone
+  seed_ips = []
+  seed_data = []
+  for z in cluster.keys():
+    seed_node = cluster[z][0]
+    seed_ips.append(seed_node['ip'])
+    # seed_data is list of {'name':xxx, 'ip':xxx, 'zone':xxx}
+    seed_data.append(seed_node)
+
+  # Update each node's cassandra.yaml file to list
+  # the seed nodes and create the PropertySnitchFile
+  for z in cluster.keys():
+    for node in cluster[z]:
+      sed = "sudo sed -i 's|seeds: "
+      sed += "\\\"127.0.0.1\\\"|seeds: 127.0.0.1,%s|'" % ",".join(seed_ips)
+      sed += " /etc/cassandra/cassandra.yaml"
+      _ = subprocess.call(["gcutil", "--service_version=%s" % API_VERSION,
+        "ssh", "--zone=%s" % z, node['name'], sed], stdout=NULL, stderr=NULL)
+  return seed_data
+
+
+# Update PropertyFileSnitch
+def addSnitch(cluster):
+  print("=> Updating Snitch file on nodes")
+  # Craft the datacenter properties file
+  i=1
+  contents = [
+    "# Auto-generated topology snitch during cluster turn-up", "#",
+    "# Cassandra node private IP=Datacenter:Rack", "#", ""
+  ]
+  for z in cluster.keys():
+    contents.append("# Zone \"%s\" => ZONE%d" % (z, i))
+    for node in cluster[z]:
+      contents.append("%s=ZONE%d:RAC1" % (node['ip'], i))
+    i+=1
+    contents.append("")
+  contents.append("# default for unknown hosts")
+  contents.append("default=ZONE1:RAC1")
+  topo_file = "sudo bash -c"
+  topo_file += " 'cat <<EOF>/etc/cassandra/cassandra-topology.properties\n"
+  topo_file += "\n".join(contents)
+  topo_file += "\nEOF'\n"
+ 
+  # Update each node's cassandra.yaml file to list
+  # the seed nodes and create the PropertySnitchFile
+  for z in cluster.keys():
+    for node in cluster[z]:
+      _ = subprocess.call(["gcutil", "--service_version=%s" % API_VERSION,
+        "ssh", "--zone=%s" % z, node['name'], topo_file],
+        stdout=NULL, stderr=NULL)
+
+
+# Check to make sure startup-script is complete
+def checkScriptComplete(cluster):
+  print("=> Ensuring startup scripts are complete")
+  num_nodes = 0
+  for z in cluster.keys():
+    num_nodes += len(cluster[z])
+
+  passed_nodes = []
+  tries=0
+  sleep_secs = 20
+  max_tries = WAIT_MAX * 60 / sleep_secs
+  while tries < max_tries:
+    for z in cluster.keys():
+      for node in cluster[z]:
+        if node['name'] not in passed_nodes:
+          done = subprocess.call(["gcutil",
+            "--service_version=%s" % API_VERSION, "ssh", "--zone=%s" % z,
+            node['name'], "ls /tmp/cassandra_startup_script_complete"],
+            stdout=NULL, stderr=NULL)
+          if done == 0:
+            passed_nodes.append(node['name'])
+            print("--> Completion file exists on node %s" % node['name'])
+          else:
+            print("*** warning: startup script not complete on node"),
+            print("%s, sleeping %d seconds" % (node['name'], sleep_secs))
+            time.sleep(sleep_secs)
+    tries += 1
+  if len(passed_nodes) != num_nodes:
+    raise BE("Error: Cluster could not be configured correctly")
+
+
+# Check cluster configs
+def checkClusterConfigs(cluster):
+  print("=> Final check to make sure all is in place")
+  for z in cluster.keys():
+    for node in cluster[z]:
+      java7 = subprocess.check_output(["gcutil",
+        "--service_version=%s" % API_VERSION, "ssh", "--zone=%s" % z,
+        node['name'], "java -version 2>&1"], stderr=NULL)
+      if java7.find("1.7.0") < 0:
+        print("*** warning: java7 not installed on %s" % node['name'])
+        return False
+      retval = subprocess.call(["gcutil",
+        "--service_version=%s" % API_VERSION, "ssh", "--zone=%s" % z,
+        node['name'],
+        "grep 'seeds: 127.0.0.1,' /etc/cassandra/cassandra.yaml"],
+        stdout=NULL, stderr=NULL)
+      if retval != 0: # grep returns non-zero if not found
+        print("*** warning: seed nodes not set on %s" % node['name'])
+        return False
+      retval = subprocess.call(["gcutil",
+        "--service_version=%s" % API_VERSION, "ssh", "--zone=%s" % z,
+        node['name'],
+        "grep \"^# Auto-gen\" /etc/cassandra/cassandra-topology.properties"],
+        stdout=NULL, stderr=NULL)
+      if retval != 0:
+        print("*** warning: snitch file not set on %s" % node['name'])
+        return False
+  return True
+
+# Cleanly start up Cassandra on specified node
+def nodeStartCassandra(zone, nodename):
+  """Cleanly start up Cassandra on specified node"""
+  status = "notok"
+  tries = 0
+  print("--> Attempting to start cassandra on node %s" % nodename),
+  while status != "ok" and tries < 5:
+    r = subprocess.call(["gcutil", "--service_version=%s" % API_VERSION,
+      "ssh", "--zone=%s" % zone,nodename, "sudo service cassandra stop"],
+      stdout=NULL, stderr=NULL)
+    r = subprocess.call(["gcutil", "--service_version=%s" % API_VERSION,
+      "ssh", "--zone=%s" % zone,nodename, "sudo rm /var/run/cassandra.pid"],
+      stdout=NULL, stderr=NULL)
+    r = subprocess.call(["gcutil", "--service_version=%s" % API_VERSION,
+      "ssh", "--zone=%s" % zone,nodename, "sudo rm -rf /var/lib/cassandra/*"],
+      stdout=NULL, stderr=NULL)
+    r = subprocess.call(["gcutil", "--service_version=%s" % API_VERSION,
+      "ssh", "--zone=%s" % zone,nodename, "sudo service cassandra start"],
+      stdout=NULL, stderr=NULL)
+    r = subprocess.call(["gcutil", "--service_version=%s" % API_VERSION,
+      "ssh", "--zone=%s" % zone,nodename, "ls /var/run/cassandra.pid"],
+      stdout=NULL, stderr=NULL)
+    if r == 0:
+      status = "ok"
+      print("UP")
+      break
+    tries += 1
+    print("."),
+  if status == "notok":
+    print("FAILED")
+    raise BE("Error: cassandra failing to start on node %s" % nodename)
+
+
+# Bring up cassandra on cluster nodes, SEEDs first
+def startCluster(seed_data, cluster):
+  """Bring up cassandra on cluster nodes, SEEDs first"""
+  # Start seed nodes first
+  print("=> Starting cassandra cluster SEED nodes")
+  started_nodes = []
+  for node in seed_data:
+    nodeStartCassandra(node['zone'], node['name'])
+    started_nodes.append(node['name'])
+
+  # Start non-seed nodes next
+  print("=> Starting cassandra cluster non-SEED nodes")
+  for z in cluster.keys():
+    for node in cluster[z]:
+      if node['name'] not in started_nodes:
+        nodeStartCassandra(z, node['name'])
+
+
+# Display cluster status by running 'nodetool status' on a node
+def verifyCluster(cluster):
+  """Display cluster status by running 'nodetool status' on a node"""
+  keys = cluster.keys()
+  zone = keys[0]
+  nodename = cluster[zone][0]['name']
+  status = subprocess.check_output(["gcutil",
+    "--service_version=%s" % API_VERSION, "ssh", "--zone=%s" % zone, nodename,
+    "nodetool status"], stderr=NULL)
+  print("=> Output from node %s and 'nodetool status'" % nodename)
+  print(status)
+
+
+def main():
+  # Find a suitable region with more than a single zone
+  zones = findZones()
+  # Make sure we don't have a region with so many zones, we exeed MAX_NODES
+  if NODES_PER_ZONE * len(zones) > MAX_NODES:
+    raise BE("Error: MAX_NODES exceeded. Too many zones: %s" % str(zones))
+
+  # Create the nodes and sleep a bit for the startup scripts to complete
+  createNodes(zones)
+  cluster = getCluster()
+  checkScriptComplete(cluster)
+
+  # Update config files on the cluster, and select a seed node per zone
+  seed_data = addSeeds(cluster)
+  addSnitch(cluster)
+
+  # Make sure the cluster's configs look good before trying to start it
+  if not checkClusterConfigs(cluster):
+    raise BE("Error: Cluster could not be configured correctly")
+
+  # Configs are good, nodes are up, bring up the cluster
+  startCluster(seed_data, cluster)
+  print("=> Cassandra cluster is up and running on all nodes")
+
+  print("=> Sleeping 60 seconds to give nodes time to join cluster")
+  time.sleep(60) # slight pause to ensure all nodes join the cluster
+  # Run nodetool status on a node and display output
+  verifyCluster(cluster)
+
+
+if __name__ == '__main__':
+  main()
+
+NULL.close()
