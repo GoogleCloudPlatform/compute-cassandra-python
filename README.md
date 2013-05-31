@@ -218,6 +218,10 @@ and want to start over, or if you're done with the guide and don't want to
 be charged for running instances.  It will list out the matching instances
 and prompt you before actually deleting the cluster.
 
+Note that all data will be permanently deleted (recall that these instances
+are only using *scratch disks*).  The script does not gracefully shutdown
+the Cassandra service or otherwise check for active usage.
+
   ```
   $ ./tools/destroy_cluster.py
   ```
