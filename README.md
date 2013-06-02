@@ -192,22 +192,20 @@ that marker file has been created and sleeps between each check.  Once all
 nodes possess the marker file, the script continues.
 1. Next, each node needs a few of its Cassandra configuration files updated.
 The script selects one node from each zone to act as a SEED node.  Each
-nodes `/etc/cassandra/cassandra.yaml` file is updated with the IP addresses
+node's `/etc/cassandra/cassandra.yaml` file is updated with the IP addresses
 of the SEED nodes.
 1. This guide uses mutliple zones and therefore a custom PropertyFileSnitch
 is generated with the IP addressess of all nodes in the cluster.  This data
 is written to each node's `/etc/cassandra/cassandra-topology.properties`
 file.
-1. There is a final pass through each node to ensure that it's running
-Java 7 and has appropriate entries in the Cassandra config files.
 1. Next, the Cassandra service is started on the two SEED nodes.  In the
 example above, this was `cassnode-b-2` and `cassnode-a-0` which were randomly
-chosen.  The remaining non-SEED nodes are then brought up also.
+chosen.  The remaining non-SEED nodes are then also brought up.
 1. Finally, the script pauses for a minute to ensure all nodes have had a
 chance to discover each other and exchange data via the gossip protocol.  To
 verify that the Cassandra cluster is actually running, the `nodetool status`
 command is run against a random node in the cluster.  Ideally, you will see
-an entry for all nodes in the cluster.
+an entry for all 6 nodes in the cluster, 3 per zone.
 
 ## Destroying the cluster
 

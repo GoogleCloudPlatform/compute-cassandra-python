@@ -27,18 +27,18 @@ mydir = os.path.dirname(os.path.realpath(__file__))
 common = mydir + os.path.sep + "common.py"
 execfile(common, globals())
 
+NULL = open(os.devnull, "w")
+
 # Call deleteinstance on all nodes in cluster.
 def destroy_nodes(cluster):
     """Call deleteinstance on all nodes in cluster."""
-    null = open(os.devnull, "w")
     for z in cluster.keys():
         for node in cluster[z]:
             print "...deleting node %s in zone %s" % (node['name'], node['zone'])
             _ = subprocess.call(["gcutil",
                     "--service_version=%s" % API_VERSION, "deleteinstance",
-                    "-f", "--zone=%s" % node['name'], node['zone']],
-                    stdout=null, stderr=null)
-    null.close()
+                    "-f", "--zone=%s" % node['zone'], node['name']],
+                    stdout=NULL, stderr=NULL)
 
 
 def main():
@@ -69,3 +69,5 @@ def main():
 
 if __name__ == '__main__':
     main()
+
+NULL.close()
