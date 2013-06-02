@@ -4,8 +4,8 @@ This repository is intended to be a guideline for setting up a basic working
 Cassandra cluster utilizing Google Compute Engine resources.
 
 This material was developed using Cassandra 1.2.5, Debian Wheezy images, and
-the OpenJDK 7 JRE available through the official Debian repository (see Java
-below).
+the OpenJDK 7 JRE (see Java below) available through the official Debian
+repository.
 
 ## Overview
 
@@ -338,6 +338,11 @@ addition to standard log files, two that you should observe are:
 
 * `/var/log/startupscript.log` - Log for metadata startup-script
 * `/var/log/cassandra/output.log` - Cassandra log
+
+Note that these scripts were *not* tested on a Windows system.  Some effort
+was put into using platform-safe commands (e.g. `os.path.sep`).  But it was
+only tested on both Linux and Mac.  Since these scripts only rely on `python`
+and `gcutil`, they *should* work on Windows also.
 
 ## Conclusion
 
