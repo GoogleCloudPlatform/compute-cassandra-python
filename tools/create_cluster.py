@@ -33,7 +33,7 @@ BE = BaseException
 
 # For the US, find the first region that has more than
 # one zone or raise an error
-def findZones():
+def find_zones():
   print("=> Finding suitable region, selecting zones:"),
   regions = subprocess.check_output(["gcutil", "--service_version",
     API_VERSION, "--format", "names", "listregions", "--filter",
@@ -49,13 +49,13 @@ def findZones():
   raise BE("Error: No suitable US regions found with 2+ zones")
 
 # Create all nodes synchronously
-def createNodes(zones):
+def create_nodes(zones):
   print("=> Creating %d '%s' '%s' nodes" % (
     NODES_PER_ZONE*len(zones), IMAGE, MACHINE_TYPE))
   script = "startup-script:" + os.path.dirname(os.path.realpath(__file__))
   script += os.path.sep + "startup_script.sh"
 
-  imgPath = getImagePath()
+  imgPath = get_image_path()
   if imgPath is None:
     raise BE("Error: No matching IMAGE for '%s'" % IMAGE)
   img = "https://www.googleapis.com/compute/%s/%s" % (API_VERSION, imgPath)
@@ -78,7 +78,7 @@ def createNodes(zones):
 
 
 # Add SEED nodes to config file
-def addSeeds(cluster):
+def add_seeds(cluster):
   print("=> Adding SEED nodes to cassandra configs")
   # Determine SEED nodes, first node from each zone
   seed_ips = []
@@ -102,7 +102,7 @@ def addSeeds(cluster):
 
 
 # Update PropertyFileSnitch
-def addSnitch(cluster):
+def add_snitch(cluster):
   print("=> Updating Snitch file on nodes")
   # Craft the datacenter properties file
   i=1
@@ -133,7 +133,7 @@ def addSnitch(cluster):
 
 
 # Check to make sure startup-script is complete
-def checkScriptComplete(cluster):
+def check_script_complete(cluster):
   print("=> Ensuring startup scripts are complete")
   num_nodes = 0
   for z in cluster.keys():
@@ -164,7 +164,7 @@ def checkScriptComplete(cluster):
 
 
 # Check cluster configs
-def checkClusterConfigs(cluster):
+def check_cluster_configs(cluster):
   print("=> Final check to make sure all is in place")
   for z in cluster.keys():
     for node in cluster[z]:
@@ -226,7 +226,7 @@ def nodeStartCassandra(zone, nodename):
 
 
 # Bring up cassandra on cluster nodes, SEEDs first
-def startCluster(seed_data, cluster):
+def start_cluster(seed_data, cluster):
   """Bring up cassandra on cluster nodes, SEEDs first"""
   # Start seed nodes first
   print("=> Starting cassandra cluster SEED nodes")
@@ -244,7 +244,7 @@ def startCluster(seed_data, cluster):
 
 
 # Display cluster status by running 'nodetool status' on a node
-def verifyCluster(cluster):
+def verify_cluster(cluster):
   """Display cluster status by running 'nodetool status' on a node"""
   keys = cluster.keys()
   zone = keys[0]
@@ -258,32 +258,32 @@ def verifyCluster(cluster):
 
 def main():
   # Find a suitable region with more than a single zone
-  zones = findZones()
+  zones = find_zones()
   # Make sure we don't have a region with so many zones, we exeed MAX_NODES
   if NODES_PER_ZONE * len(zones) > MAX_NODES:
     raise BE("Error: MAX_NODES exceeded. Too many zones: %s" % str(zones))
 
   # Create the nodes and sleep a bit for the startup scripts to complete
-  createNodes(zones)
-  cluster = getCluster()
-  checkScriptComplete(cluster)
+  create_nodes(zones)
+  cluster = get_cluster()
+  check_script_complete(cluster)
 
   # Update config files on the cluster, and select a seed node per zone
-  seed_data = addSeeds(cluster)
-  addSnitch(cluster)
+  seed_data = add_seeds(cluster)
+  add_snitch(cluster)
 
   # Make sure the cluster's configs look good before trying to start it
-  if not checkClusterConfigs(cluster):
+  if not check_cluster_configs(cluster):
     raise BE("Error: Cluster could not be configured correctly")
 
   # Configs are good, nodes are up, bring up the cluster
-  startCluster(seed_data, cluster)
+  start_cluster(seed_data, cluster)
   print("=> Cassandra cluster is up and running on all nodes")
 
   print("=> Sleeping 60 seconds to give nodes time to join cluster")
   time.sleep(60) # slight pause to ensure all nodes join the cluster
   # Run nodetool status on a node and display output
-  verifyCluster(cluster)
+  verify_cluster(cluster)
 
 
 if __name__ == '__main__':

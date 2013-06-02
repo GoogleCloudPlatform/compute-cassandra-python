@@ -27,34 +27,22 @@ mydir = os.path.dirname(os.path.realpath(__file__))
 common = mydir + os.path.sep + "common.py"
 execfile(common, globals())
 
-# Find nodes that match our name prefix
-def getNodes():
-  nodes = []
-  pattern = "name eq '%s.*'" % NODE_PREFIX
-  csv = subprocess.check_output(["gcutil",
-    "--service_version=%s" % API_VERSION, "--format=csv", "listinstances",
-    "--filter=%s" % pattern]).split('\n')
-  for line in csv:
-    elements = line.split(',')
-    if elements[0].startswith(NODE_PREFIX):
-      nodes.append([elements[0], elements[7]])
-  return nodes
-
 # destroy the nodes
-def destroyNodes(nodes):
+def destroy_nodes(cluster):
   null = open(os.devnull, "w")
-  for node in nodes:
-    print "...deleting %s in zone %s" % (node[0], node[1])
-    _ = subprocess.call(["gcutil",
-      "--service_version=%s" % API_VERSION, "deleteinstance", "-f",
-      "--zone=%s" % node[1], node[0]], stdout=null, stderr=null)
+  for z in cluster.keys():
+    for node in cluster[z]:
+      print "...deleting node %s in zone %s" % (node['name'], node['zone'])
+      _ = subprocess.call(["gcutil",
+          "--service_version=%s" % API_VERSION, "deleteinstance", "-f",
+          "--zone=%s" % node['name'], node['zone']], stdout=null, stderr=null)
   null.close()
 
 
 def main():
-  nodes = getNodes()
+  cluster = get_cluster()
 
-  if not nodes:
+  if not cluster:
     print "No nodes found matching NODE_PREFIX '%s'" % NODE_PREFIX
     sys.exit(0)
 
@@ -64,16 +52,17 @@ def main():
   print "You are about to delete ALL of the following instances.  This"
   print "operation can *NOT* be undone and ALL data will be lost."
   print ""
-  for node in nodes:
-    print "\t" + node[0] + " in zone " + node[1]
+  for z in cluster.keys():
+    print "=> Nodes for Zone '%s'" % z
+    for node in cluster[z]:
+      print "--> %s" % node['name']
   answer = raw_input("\nAre you SURE you want to delete these nodes [y|N]? ")
   if answer.lower() not in ["y", "yes"]:
     print "Ok, nothing to do then."
     sys.exit(0)
 
-  destroyNodes(nodes)
+  destroy_nodes(cluster)
   print "Complete.  Nodes deleted."
-
 
 if __name__ == '__main__':
   main()

@@ -13,15 +13,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""
-Script to set up authentication via gcutil.
+"""Script to set up authentication via gcutil.
 
 Make sure to pass in the "Project ID" and not the project name or number.
 """
 
 import subprocess
 import sys
-from os import devnull
+import os
 
 if len(sys.argv) != 2:
   print "Usage: auth.py project_id"
@@ -33,7 +32,7 @@ if retval != 0:
   print "Error authenticating, please try again"
   sys.exit(retval)
 
-# cache the projectid but don't clutter stdout
-null = open(devnull, "w")
+# Silently cache the project id to avoid repeatedly passing in an extra arg.
+null = open(os.devnull, "w")
 _ = subprocess.call(["gcutil", "getproject", "--project=%s" % (sys.argv[1]),
-  "--cache_flag_values"], stdout=null, stderr=null)
+      "--cache_flag_values"], stdout=null, stderr=null)
