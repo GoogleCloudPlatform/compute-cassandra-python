@@ -145,7 +145,6 @@ will see something similar to:
     --> Completion file exists on node cassnode-a-2
     => Adding SEED nodes to cassandra configs
     => Updating Snitch file on nodes
-    => Final check to make sure all is in place
     => Starting cassandra cluster SEED nodes
     --> Attempting to start cassandra on node cassnode-b-2 UP
     --> Attempting to start cassandra on node cassnode-a-0 UP
