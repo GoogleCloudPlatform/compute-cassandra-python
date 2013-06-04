@@ -18,9 +18,12 @@
 Make sure to pass in the "Project ID" and not the project name or number.
 """
 
-import subprocess
-import sys
 import os
+
+# Read in global config variables
+mydir = os.path.dirname(os.path.realpath(__file__))
+common = mydir + os.path.sep + "common.py"
+execfile(common, globals())
 
 if len(sys.argv) != 2:
     print "Usage: auth.py project_id"
@@ -33,6 +36,5 @@ if retval != 0:
     sys.exit(retval)
 
 # Silently cache the project id to avoid repeatedly passing in an extra arg.
-null = open(os.devnull, "w")
 _ = subprocess.call(["gcutil", "getproject", "--project=%s" % (sys.argv[1]),
-        "--cache_flag_values"], stdout=null, stderr=null)
+        "--cache_flag_values"], stdout=NULL, stderr=NULL)

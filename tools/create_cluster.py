@@ -15,8 +15,6 @@
 
 """Script to start up a demo Cassandra cluster on Google Compute Engine."""
 
-import subprocess
-import sys
 import os
 import time
 
@@ -25,8 +23,6 @@ mydir = os.path.dirname(os.path.realpath(__file__))
 common = mydir + os.path.sep + "common.py"
 execfile(common, globals())
 
-NULL = open(os.devnull, "w")
-BE = BaseException
 
 # Find a US region with at least two UP zones.
 def find_zones():
@@ -256,5 +252,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
-NULL.close()

@@ -329,8 +329,13 @@ each zone.
   ```
 ## Debugging / Troubleshooting
 
+The first thing you can try is to edit `tools/common.py` and change the
+VERBOSE value to `True`.  When you re-run a script with that enabled, you
+will see all of the standard output and error messages from `gcutil`.
+
 In order to understand what's going on with a cluster deployment with these
-scripts, you will likely need to SSH into a node and monitor log files.  In
+scripts, you will likely need to either use the web console and check the
+instance's serial output or SSH into the instance and monitor log files.  In
 addition to standard log files, two that you should observe are:
 
 * `/var/log/startupscript.log` - Log for metadata startup-script

@@ -6,6 +6,17 @@ IMAGE = "debian-7"             # either debian-6, debian-7, or centos-6
 MACHINE_TYPE = "n1-standard-1" # basic machine type
 API_VERSION = "v1beta15"       # GCE API version
 WAIT_MAX = 10                  # max wait for startup-scripts
+VERBOSE = False                # eat gcutil's stdout/stderr, True to enable
+#############################################################################
+import subprocess
+import os
+import sys
+
+if VERBOSE:
+  NULL = None
+else:
+  NULL = open(os.devnull, "w")
+BE = BaseException
 
 # Internal data structure for the cluster is a dict by 'zone', with a list
 # of dicts containing 'name' and 'ip'
@@ -25,10 +36,11 @@ def get_cluster():
     for line in csv:
         p = line.split(',')
         if p[0].startswith(NODE_PREFIX):
-            if cluster.has_key(p[7]):
-                cluster[p[7]].append({'name':p[0], 'ip':p[4], 'zone':p[7]})
+            zone = p[7].split('/')[-1]
+            if cluster.has_key(zone):
+                cluster[zone].append({'name':p[0], 'ip':p[4], 'zone':zone})
             else:
-                cluster[p[7]] = [{'name':p[0], 'ip':p[4], 'zone':p[7]}]
+                cluster[zone] = [{'name':p[0], 'ip':p[4], 'zone':zone}]
     return cluster
 
 # Return the image URL that matches IMAGE

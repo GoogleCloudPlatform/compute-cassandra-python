@@ -16,9 +16,7 @@
 """
 """
 
-import subprocess
 import os
-import sys
 
 # Read in global variables, edit
 # the common.py file to change any
@@ -27,7 +25,6 @@ mydir = os.path.dirname(os.path.realpath(__file__))
 common = mydir + os.path.sep + "common.py"
 execfile(common, globals())
 
-NULL = open(os.devnull, "w")
 
 # Call deleteinstance on all nodes in cluster.
 def destroy_nodes(cluster):
@@ -70,4 +67,3 @@ def main():
 if __name__ == '__main__':
     main()
 
-NULL.close()

@@ -15,9 +15,12 @@
 
 """Script to set up firewall rules via gcutil."""
 
-import subprocess
-import sys
 import os
+
+# Read in global config variables
+mydir = os.path.dirname(os.path.realpath(__file__))
+common = mydir + os.path.sep + "common.py"
+execfile(common, globals())
 
 def usage():
     print "Usage: firewall.py [open|close]"
@@ -25,23 +28,20 @@ def usage():
 
 if len(sys.argv) != 2: usage()
 
-# Assumes user is using the 'default' network
-null = open(os.devnull, "w")
-
 if sys.argv[1].lower() == "open":
     ret = subprocess.check_output(["gcutil", "--format", "csv",
             "listfirewalls", "--filter", "name eq cassandra"],
-            stderr=null).split('\n')[0:-1]
+            stderr=NULL).split('\n')[0:-1]
     if len(ret) == 2:
-        raise BaseException("Error: Rule 'cassandra' already exists")
+        raise BE("Error: Rule 'cassandra' already exists")
 
     ret = subprocess.call(["gcutil", "addfirewall",
             "--allowed", "tcp:9160,tcp:9042", "--network", "default",
             "--description", "Allow all incoming to Cassandra Thrift/CQL",
-            "cassandra"], stdout=null, stderr=null)
+            "cassandra"], stdout=NULL, stderr=NULL)
 elif sys.argv[1].lower() == "close":
     ret = subprocess.call(["gcutil", "deletefirewall", "--force",
-            "cassandra"], stdout=null, stderr=null)
+            "cassandra"], stdout=NULL, stderr=NULL)
 else:
     usage()
 
