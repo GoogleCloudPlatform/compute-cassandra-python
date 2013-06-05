@@ -56,9 +56,10 @@ documentation existing today advises that Cassandra 1.x be run using a
 proprietary JVM, at version 1.6.  However, after doing a bit more
 [digging](http://comments.gmane.org/gmane.comp.db.cassandra.devel/7504), the
 development community is pushing for OpenJDK 7 for Cassandra 2.x.  Other
-post by committers have suggested trying OpenJDK 7 and reporting bugs.  Since
-this guide is not intended to be a production deployment guide, it made
-sense to further the cause.
+mailing list posts by committers have suggested trying OpenJDK 7 and reporting
+bugs.  Since this guide is not intended to be a production deployment guide,
+it made sense to further the cause of ensuring OpenJDK 7 is a good fit for
+Cassandra deployments.
 
 If readers do wish to use an alternate JVM with this guide, the included
 scripts can fairly easily be tweaked (e.g. minor edits to
@@ -73,7 +74,18 @@ nodes depending on usage.
 
 The default settings for this guide live in `tools/common.py`.  You can make
 changes to the number of nodes in the cluster, machine type, image, and
-nodename prefix by editing these default global variables.
+nodename prefix by editing these default global variables.  The releavent
+section of the file looks like:
+  ```
+  NODES_PER_ZONE = 3             # likely a 6-node cluster
+  MAX_NODES = 9                  # upper limit on node count
+  NODE_PREFIX = "cassnode"       # all nodenames begin with this
+  IMAGE = "debian-7"             # either debian-6, debian-7, or centos-6
+  MACHINE_TYPE = "n1-standard-1" # basic machine type
+  API_VERSION = "v1beta15"       # GCE API version
+  WAIT_MAX = 10                  # max wait iterations for startup-scripts
+  VERBOSE = False                # eat gcutil's stdout/stderr unless True
+  ```
 
 ## One-time Setup
 
@@ -83,26 +95,30 @@ $ git clone https://github.com/GoogleCloudPlatform/compute-cassandra-python.git
 $ cd compute-cassandra-python
 ```
 
-1. Set up authorization.  Please make sure to specify your *Project ID* (and
-not the project name or number).  Your Project ID can be found in the
-[API Console](https://code.google.com/apis/console/) dashboard.
-```
-$ cd compute-cassandra-python
-$ ./tools/auth.py <project_id>
-```
+1. Set up authorization.  Please make sure to specify your *Project ID* (not
+the project name or number).  To find your Project ID, log into the 
+[Cloud Console](https://cloud.google.com/console/) and look in the upper
+left corner under your project.  Once you have your Project ID, run the
+following command to authenticate:
+  ```
+  $ gcutl auth --project_id=YOUR_PROJECT_ID
+  ```
 You will be prompted to open a URL in your browser.  You may need to log in
 with your Google credentials if you haven't already.  Click the "Allow access"
-button.  Next copy/paste the verification code in your terminal.  This will
-cache authorization information into your `$HOME/.gcutil_auth` file.
+button.  Next, copy/paste the verification code in your terminal.  Then run
+the following command to cache your Project ID for so the included scripts
+can reference your Project ID:
+  ```
+  $ gcutil getproject --project_id=YOUR_PROJECT_ID --cache_flag_values
+  ```
 
 1. Networking firewall rules. If you want to access the cluster over its
 external ephemeral IP's, you should consider opening up port 9160 for the
 Thrift protocol and 9042 for CQL clients.  By default, internal IP traffic
 is open so no other rules should be necessary.  You can open these ports with
-the following:
-
+the following (assuming you want to use the 'default' network):
     ```
-    $ ./tools/firewall.py open
+    $ gcutil addfirewall cassandra-rule --allowed="tcp:9042,tcp:9160" --network="default" --description="Allow external Cassandra Thrift/CQL connections"
     ```
 
 ## Creating the Cluster
@@ -113,7 +129,7 @@ the following:
     $ ./tools/create_cluster.py
     ```
 
-1. Go get a cup of tea (or other libation to
+1. Go get a cup of tea (or other libation to the prophet
 [Cassandra](http://en.wikipedia.org/wiki/Cassandra)). This will take
 upwards of 10 minutes.  Assuming the script completes with no errors, you
 will see something similar to:
@@ -183,7 +199,7 @@ maintenance window).  In the output above, the script selects zones
 `us-central1-a` and `us-central1-b` in region `us-central1`.
 1. Next, the script creates 3 `n1-standard-1` instances running `debian-7`
 in each zone.  The nodename is computed by using the last 3-characters of the
-zone name appended to the NAME_PREFIX defined in `tools/common.py`.
+zone name appended to the NODE_PREFIX defined in `tools/common.py`.
 1. When an instance is created, a custom script is executed by using GCE's
 metadata feature.  The commands to be executed on a newly created instance
 can be found in `tools/startup_script.sh`.  The last command in this script
@@ -211,7 +227,7 @@ an entry for all 6 nodes in the cluster, 3 per zone.
 ## Destroying the cluster
 
 There is a script that will delete all nodes with names starting with the
-NAME_PREFIX.  You can use this to purge the cluster if something goes wrong
+NODE_PREFIX.  You can use this to purge the cluster if something goes wrong
 and want to start over, or if you're done with the guide and don't want to
 be charged for running instances.  It will list out the matching instances
 and prompt you before actually deleting the cluster.
@@ -228,7 +244,7 @@ Once the cluster is down, you may also want to delete the firewall rule
 that allows external Thrift/CQL communication.  You can do that with:
 
   ```
-  $ ./tools/firewall.py close
+  $ gcutil deletefirewall cassandra-rule
   ```
 
 ## CQL: Getting Started
@@ -244,7 +260,10 @@ Start by SSH'ing into one of your cluster nodes, for example:
   ```
 
 Once logged in, fire up the included python-based CQL interpreter and create
-a demo keyspace.  For instance,
+a demo keyspace.  In the example below, a keyspace is created with the
+`NetworkTopologyStrategy` class with a data replication factor of 2 for each
+zone.  A few informational commands show some the keyspace's properties and
+a snippet of the token distribution.  For instance,
 
   ```
   $ cqlsh
@@ -310,10 +329,10 @@ Next, you can create a few tables and insert some sample data.
   ```
 
 Now you can use `nodetool` to take a look at a how the data is distributed.
-Note that the nodenames were manually added to better illustrate the data
-distribution across zones.  Recall that in these examples, the replication
-factor was set to 2 for each zone implying that data exists in two nodes in 
-each zone.
+Note that the nodenames were manually added to the output as comments to
+better illustrate the data distribution across zones.  Recall that in these
+examples, the replication factor was set to 2 for each zone implying that
+data exists in two nodes in each zone.
 
   ```
   $ gcutil ssh --zone us-central1-a cassnode-a-2
@@ -330,22 +349,34 @@ each zone.
   ```
 ## Debugging / Troubleshooting
 
-The first thing you can try is to edit `tools/common.py` and change the
-VERBOSE value to `True`.  When you re-run a script with that enabled, you
+1. Make sure that you cached your Project ID with `gcutil` as stated in the
+One-time Setup section above.  The scripts assume that the Project ID has
+been cached and will likely fail unless you've cached your Project ID.
+
+1. Enable extra command-line output by toggling the VERBOSE variable to `True`
+in the `tools/common.py` file. When you re-run a script with that enabled, you
 will see all of the standard output and error messages from `gcutil`.
 
-In order to understand what's going on with a cluster deployment with these
+1. In order to understand what's going on with a cluster deployment with these
 scripts, you will likely need to either use the web console and check the
 instance's serial output or SSH into the instance and monitor log files.  In
 addition to standard log files, two that you should observe are:
+ * `/var/log/startupscript.log` - Log for metadata startup-script
+ * `/var/log/cassandra/output.log` - Cassandra log
 
-* `/var/log/startupscript.log` - Log for metadata startup-script
-* `/var/log/cassandra/output.log` - Cassandra log
+ Note that these scripts were *not* tested on a Windows system.  Some effort
+ was put into using platform-safe commands (e.g. `os.path.sep`).  But it was
+ only tested on Linux and Mac.  Since these scripts only rely on `python`
+ and `gcutil`, they *should* also work on Windows.
 
-Note that these scripts were *not* tested on a Windows system.  Some effort
-was put into using platform-safe commands (e.g. `os.path.sep`).  But it was
-only tested on both Linux and Mac.  Since these scripts only rely on `python`
-and `gcutil`, they *should* work on Windows also.
+1. Ensure that your firewall rule is enabled so that the Cassandra nodes
+are accessible with by both Thrift and CQL protocols.
+
+1. If you are having problems with Cassandra, then you can look for help on
+mailing lists, forums, stackoverthrow, or IRC.  In other words, if the nodes
+have all been  created and Cassandra started successfully (as verfied
+with the `nodetool status` output) but you are not able to execute CQL
+commands properly, then you'll likely need more detailed Cassandra help.
 
 ## Conclusion
 

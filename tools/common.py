@@ -20,7 +20,7 @@ IMAGE = "debian-7"             # either debian-6, debian-7, or centos-6
 MACHINE_TYPE = "n1-standard-1" # basic machine type
 API_VERSION = "v1beta15"       # GCE API version
 WAIT_MAX = 10                  # max wait iterations for startup-scripts
-VERBOSE = False                # eat gcutil's stdout/stderr, True to enable
+VERBOSE = False                # eat gcutil's stdout/stderr unless True
 #############################################################################
 import subprocess
 import os
