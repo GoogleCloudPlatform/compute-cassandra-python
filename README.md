@@ -95,9 +95,6 @@ with your Google credentials if you haven't already.  Click the "Allow access"
 button.  Next copy/paste the verification code in your terminal.  This will
 cache authorization information into your `$HOME/.gcutil_auth` file.
 
-Note: You could also do this by hand with `gcutil` but the script is included
-as an easy way to authenticate and cache your Project ID.
-
 1. Networking firewall rules. If you want to access the cluster over its
 external ephemeral IP's, you should consider opening up port 9160 for the
 Thrift protocol and 9042 for CQL clients.  By default, internal IP traffic
@@ -106,14 +103,6 @@ the following:
 
     ```
     $ ./tools/firewall.py open
-    ```
-Note: As with the auth step above, a `gcutil` command can be used to set
-the firewall rule by hand.  The script is provided for a cleaner "open/close"
-argument.  To set a firewall rule by hand for example,
-
-    ```
-    $ gcutil addfirewall --allowed=tcp:9042,tcp:9160 --network=default \
-    > --description="Allow incomding Cassandra Thrift/CQL" cassandra
     ```
 
 ## Creating the Cluster
