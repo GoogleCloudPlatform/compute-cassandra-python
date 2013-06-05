@@ -3,9 +3,9 @@
 This repository is intended to be a guideline for setting up a basic working
 Cassandra cluster utilizing Google Compute Engine resources.
 
-This material was developed using Cassandra 1.2.5, Debian Wheezy images, and
-the OpenJDK 7 JRE (see Java below) available through the official Debian
-repository.
+This material was developed using Cassandra 1.2.5, Debian Wheezy images,
+Python 2.7, and the OpenJDK 7 JRE (see Java below) available through the
+official Debian repository.
 
 ## Overview
 
@@ -17,7 +17,7 @@ interface but is *not* equivalent with a traditional relational,
 ACID-compliant database like MySQL or PostgreSQL.  To learn much more about
 Cassandra, you can also reference the material published by Datastax on their
 [resources page](http://www.datastax.com/resources).  This guide was developed
-using Datastax's Cassandra Community Edition.
+using Datastax's [Community Edition](http://www.datastax.com/docs/quick_start/cassandra_quickstart) for Debian.
 
 
 Google Compute Engine (GCE) is a very good match for Cassandra users.  Some of
@@ -45,8 +45,9 @@ This guide assumes you have registered a
 Google Compute Engine service.  It also assumes you have installed
 [`gcutil`](https://developers.google.com/compute/docs/gcutil/), the
 command-line utility used to manage Google Compute Engine resources.  Lastly,
-you will need a system with [`python`](http://www.python.org/) installed if
-you would like to use the provided scripts for deploying the example cluster.
+you will need a system with [`python`](http://www.python.org/) (at least 2.7)
+installed if you would like to use the provided scripts for deploying the
+example cluster.
 
 ### A note about Java
 
@@ -94,6 +95,9 @@ with your Google credentials if you haven't already.  Click the "Allow access"
 button.  Next copy/paste the verification code in your terminal.  This will
 cache authorization information into your `$HOME/.gcutil_auth` file.
 
+Note: You could also do this by hand with `gcutil` but the script is included
+as an easy way to authenticate and cache your Project ID.
+
 1. Networking firewall rules. If you want to access the cluster over its
 external ephemeral IP's, you should consider opening up port 9160 for the
 Thrift protocol and 9042 for CQL clients.  By default, internal IP traffic
@@ -102,6 +106,14 @@ the following:
 
     ```
     $ ./tools/firewall.py open
+    ```
+Note: As with the auth step above, a `gcutil` command can be used to set
+the firewall rule by hand.  The script is provided for a cleaner "open/close"
+argument.  To set a firewall rule by hand for example,
+
+    ```
+    $ gcutil addfirewall --allowed=tcp:9042,tcp:9160 --network=default \
+    > --description="Allow incomding Cassandra Thrift/CQL" cassandra
     ```
 
 ## Creating the Cluster

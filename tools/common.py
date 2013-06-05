@@ -1,3 +1,17 @@
+# Copyright 2013 Google Inc. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#       http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 # Common global variables and functions
 NODES_PER_ZONE = 3             # likely a 6-node cluster
 MAX_NODES = 9                  # upper limit on node count
@@ -5,7 +19,7 @@ NODE_PREFIX = "cassnode"       # all nodenames begin with this
 IMAGE = "debian-7"             # either debian-6, debian-7, or centos-6
 MACHINE_TYPE = "n1-standard-1" # basic machine type
 API_VERSION = "v1beta15"       # GCE API version
-WAIT_MAX = 10                  # max wait for startup-scripts
+WAIT_MAX = 10                  # max wait iterations for startup-scripts
 VERBOSE = False                # eat gcutil's stdout/stderr, True to enable
 #############################################################################
 import subprocess
@@ -20,10 +34,12 @@ BE = BaseException
 
 # Internal data structure for the cluster is a dict by 'zone', with a list
 # of dicts containing 'name' and 'ip'
+# Essentially looks for any instances that have a name that starts
+# with NODE_PREFIX
 # e.g.
 # cluster['us-central1-a'] = [
-#     {'name': 'cassnode-a-0', 'ip': '192.168.72.3'},
-#     {'name': 'cassnode-a-1', 'ip': '192.168.112.92'}
+#     {'name': 'cassnode-a-0', 'ip': '192.168.72.3', 'zone': 'us-central1-a'},
+#     {'name': 'cassnode-a-1', 'ip': '192.168.112.9', 'zone': 'us-central1-a'}
 # ]
 def get_cluster():
     """Return the program data structure of a cluster"""
@@ -43,7 +59,7 @@ def get_cluster():
                 cluster[zone] = [{'name':p[0], 'ip':p[4], 'zone':zone}]
     return cluster
 
-# Return the image URL that matches IMAGE
+# Return the image URL that matches IMAGE defined above
 def get_image_path():
     """Return the image URL that matches IMAGE"""
     imagePath = None
