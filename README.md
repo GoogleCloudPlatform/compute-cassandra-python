@@ -101,7 +101,7 @@ the project name or number).  To find your Project ID, log into the
 left corner under your project.  Once you have your Project ID, run the
 following command to authenticate:
   ```
-  $ gcutl auth --project_id=YOUR_PROJECT_ID
+  $ gcutil auth --project_id=YOUR_PROJECT_ID
   ```
 You will be prompted to open a URL in your browser.  You may need to log in
 with your Google credentials if you haven't already.  Click the "Allow access"
