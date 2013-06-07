@@ -25,7 +25,7 @@ GCE's features that make it a great fit are:
 
 * Distinct geographic regions within Europe and North America
 * Separate zones within a region to provide fault-tolerance within a region
-* Ability to scale up/down be adding and removing compute resources
+* Ability to scale up/down by adding and removing compute resources
 * A variety of compute machine types for standard or high memory/CPU needs
 * Bring up instances with a custom startup script
 * Persistent disks to preserve and share data between restarts and/or machines
@@ -74,7 +74,7 @@ nodes depending on usage.
 
 The default settings for this guide live in `tools/common.py`.  You can make
 changes to the number of nodes in the cluster, machine type, image, and
-nodename prefix by editing these default global variables.  The releavent
+nodename prefix by editing these default global variables.  The relevent
 section of the file looks like:
   ```
   NODES_PER_ZONE = 3             # likely a 6-node cluster
@@ -113,10 +113,11 @@ can reference your Project ID:
   ```
 
 1. Networking firewall rules. If you want to access the cluster over its
-external ephemeral IP's, you should consider opening up port 9160 for the
-Thrift protocol and 9042 for CQL clients.  By default, internal IP traffic
-is open so no other rules should be necessary.  You can open these ports with
-the following (assuming you want to use the 'default' network):
+external ephemeral IP addresses, you should consider opening up port 9160 
+for the Thrift protocol and 9042 for CQL clients.  By default, internal IP 
+traffic is open so no other rules should be necessary.  You can open these 
+ports with the following comment (assuming you want to use the 'default' 
+network):
     ```
     $ gcutil addfirewall cassandra-rule --allowed="tcp:9042,tcp:9160" --network="default" --description="Allow external Cassandra Thrift/CQL connections"
     ```
@@ -373,7 +374,7 @@ addition to standard log files, two that you should observe are:
 are accessible with by both Thrift and CQL protocols.
 
 1. If you are having problems with Cassandra, then you can look for help on
-mailing lists, forums, stackoverthrow, or IRC.  In other words, if the nodes
+mailing lists, forums, Stack Overflow, or IRC.  In other words, if the nodes
 have all been  created and Cassandra started successfully (as verfied
 with the `nodetool status` output) but you are not able to execute CQL
 commands properly, then you'll likely need more detailed Cassandra help.
@@ -382,13 +383,13 @@ commands properly, then you'll likely need more detailed Cassandra help.
 
 This guide was meant to give you the basic tools to bring up a small
 Cassandra cluster for further education and evaluation.  The scripts should
-be fairly straight forward to understand or tweak for your own experiments.
+be fairly straightforward to understand or tweak for your own experiments.
 
 In summary, this guide showed that Google's Compute Engine is a good fit
-for Cassandra deployments by,
+for Cassandra deployments by:
 
 * Taking advantage of mutliple zones within a region
-* Metadata hooks to customize your instanes when they are created
+* Metadata hooks to customize your instances when they are created
 * The (under the hood) capabilities of `gcutil` to easily manage your instances
 * The ease with which a Cassandra cluster can be created and destroyed
 
