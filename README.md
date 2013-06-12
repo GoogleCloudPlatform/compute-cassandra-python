@@ -74,7 +74,7 @@ nodes depending on usage.
 
 The default settings for this guide live in `tools/common.py`.  You can make
 changes to the number of nodes in the cluster, machine type, image, and
-nodename prefix by editing these default global variables.  The relevent
+nodename prefix by editing these default global variables.  The relevant
 section of the file looks like:
   ```
   NODES_PER_ZONE = 3             # likely a 6-node cluster
