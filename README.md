@@ -198,8 +198,9 @@ least two zones in that region also in the UP state (e.g. not under a
 maintenance window).  In the output above, the script selects zones
 `us-central1-a` and `us-central1-b` in region `us-central1`.
 1. Next, the script creates 3 `n1-standard-1` instances running `debian-7`
-in each zone.  The nodename is computed by using the last 3-characters of the
-zone name appended to the NODE_PREFIX defined in `tools/common.py`.
+in each zone.  The nodename is computed by concatenating the NODE_PREFIX
+defined in `tools/common.py`, a dash, the zone designator, another dash,
+and an incrementing integer (e.g. `cassnode-a-0` or `cassnode-b-2`).
 1. When an instance is created, a custom script is executed by using GCE's
 metadata feature.  The commands to be executed on a newly created instance
 can be found in `tools/startup_script.sh`.  The last command in this script
