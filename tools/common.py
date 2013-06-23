@@ -62,13 +62,13 @@ def get_cluster():
 # Return the image URL that matches IMAGE defined above
 def get_image_path():
     """Return the image URL that matches IMAGE"""
-    imagePath = None
+    image_path = None
     csv = subprocess.check_output(["gcutil",
         "--service_version=%s" % API_VERSION, "--format=csv", "listimages",
         "--filter", "status eq READY"], stderr=NULL).split('\n')[1:-1]
     for line in csv:
-        name = line.split(',')[0]
-        path = name.split('/')
-        if len(path) == 5 and path[4].startswith(IMAGE):
-            imagePath = name 
-    return imagePath
+        path = line.split(',')[0]
+        name = path.split('/')[-1]
+        if name.startswith(IMAGE):
+            image_path = name 
+    return image_path
