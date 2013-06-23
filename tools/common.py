@@ -69,6 +69,6 @@ def get_image_path():
     for line in csv:
         name = line.split(',')[0]
         path = name.split('/')
-        if path[4].startswith(IMAGE):
+        if len(path) == 5 and path[4].startswith(IMAGE):
             imagePath = name 
     return imagePath
