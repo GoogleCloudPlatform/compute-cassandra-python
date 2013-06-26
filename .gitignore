@@ -1,2 +1,3 @@
 *.swp
 *.py[cod]
+tools/node_config_tmpl.sh

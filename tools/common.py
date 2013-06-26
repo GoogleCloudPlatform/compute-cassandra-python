@@ -13,18 +13,41 @@
 # limitations under the License.
 
 # Common global variables and functions
-NODES_PER_ZONE = 3             # likely a 6-node cluster
-MAX_NODES = 9                  # upper limit on node count
-NODE_PREFIX = "cassnode"       # all nodenames begin with this
-IMAGE = "debian-7"             # either debian-6, debian-7, or centos-6
-MACHINE_TYPE = "n1-standard-1" # basic machine type
+NODES_PER_ZONE = 3             # define number of nodes to create in each
+                               # zone.  GCE typically has two zones per region
+                               # so this would create a 6 node C* cluster
+
+MAX_NODES = 9                  # prevents excessive number of nodes to be
+                               # created.  if NODES_PER_ZONE * number_of_zones
+                               # is > than MAX_NODES, the script will raise an
+                               # error and exit.  GCE typically has 2 zones per
+                               # region (e.g. NODES_PER_ZONE * 2 < MAX_NODES)
+
+NODE_PREFIX = "cassnode"       # all nodenames begin with this string.  This is
+                               # how the scripts determine what nodes belong to
+                               # the C* cluster.
+
+MACHINE_TYPE = "n1-standard-1" # the machine type used for all cluster nodes
+
 API_VERSION = "v1beta15"       # GCE API version
-WAIT_MAX = 10                  # max wait iterations for startup-scripts
-VERBOSE = False                # eat gcutil's stdout/stderr unless True
+
+WAIT_MAX = 10                  # max wait-iterations for startup-script, the
+                               # delay between each iteration is 20 seconds
+
+JRE6_VERSION = "jre1.6.0_45"   # version string of extracted JRE path
+JRE6_INSTALL = "jre-6u45-linux-x64.bin" # basenamne of downloaded JRE
+
+VERBOSE = False                # eat gcutil's stdout/stderr unless True, if
+                               # debugging script issues, set this to True
+                               # and re-run the scripts
 #############################################################################
 import subprocess
 import os
 import sys
+
+# Moving this out of the config block above to prevent users from
+# changing it to debian-6 or centos-6.
+IMAGE = "debian-7"
 
 if VERBOSE:
   NULL = None
@@ -70,5 +93,5 @@ def get_image_path():
         path = line.split(',')[0]
         name = path.split('/')[-1]
         if name.startswith(IMAGE):
-            image_path = name 
+            image_path = path
     return image_path

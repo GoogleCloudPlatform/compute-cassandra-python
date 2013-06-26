@@ -13,15 +13,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# This script was used to install and configure this instance as a
+# Cassandra node per the tutorial outlined at
+# https://github.com/GoogleCloudPlatform/compute-cassandra-python
+
+# This script is expecting the user to accept the Oracle EULA and download:
+# http://download.oracle.com/otn/java/jdk/6u45-b06/jre-6u45-linux-x64.bin
+jre_install_file=@JRE6_INSTALL@
+jre_version=@JRE6_VERSION@
+
 echo 'deb http://debian.datastax.com/community stable main' >> /etc/apt/sources.list
 curl -sL http://debian.datastax.com/debian/repo_key | /usr/bin/apt-key add - >/dev/null
 apt-get -y -qq update
 apt-get -y -qq upgrade
-apt-get -y -qq install dsc12
+apt-get -y -qq install dsc12 libjna-java
 service cassandra stop
 rm -rf /var/lib/cassandra/*
-apt-get -y -qq install icedtea-7-plugin openjdk-7-jdk openjdk-7-jre openjdk-7-jre-headless
-update-java-alternatives -s java-1.7.0-openjdk-amd64
 
 CONF=/etc/cassandra/cassandra.yaml
 intip=$(ifconfig eth0 | grep "inet addr:" | awk '{print $2}' | cut -d: -f2)
@@ -31,4 +38,18 @@ sed -i "s|^listen_address: localhost$|listen_address: ${intip}|" $CONF
 sed -i "s|^rpc_address: localhost$|rpc_address: 0.0.0.0|" $CONF
 sed -i "s|^# num_tokens: 256$|num_tokens: 256|" $CONF
 sed -i "s|^endpoint_snitch: SimpleSnitch$|endpoint_snitch: PropertyFileSnitch|" $CONF
+sed -i "s|seeds: \"127.0.0.1\"|seeds: 127.0.0.1,@SEED_IPS@|" $CONF
+cat > /etc/cassandra/cassandra-topology.properties <<EOF
+@SNITCH_TEXT@
+EOF
+
+# Set up Java per,
+# http://www.datastax.com/documentation/cassandra/1.2/index.html#cassandra/install/installJreDeb.html
+cd /usr/java/latest
+chmod +x ${jre_install_file}
+./${jre_install_file}
+update-alternatives --install "/usr/bin/java" "java" "/usr/java/latest/${jre_version}/bin/java" 1
+update-alternatives --set java /usr/java/latest/${jre_version}/bin/java
+
 touch /tmp/cassandra_startup_script_complete
+exit 0
