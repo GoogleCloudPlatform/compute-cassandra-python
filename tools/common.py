@@ -16,7 +16,6 @@
 NODES_PER_ZONE = 3             # likely a 6-node cluster
 MAX_NODES = 9                  # upper limit on node count
 NODE_PREFIX = "cassnode"       # all nodenames begin with this
-IMAGE = "debian-7"             # either debian-6, debian-7, or centos-6
 MACHINE_TYPE = "n1-standard-1" # basic machine type
 API_VERSION = "v1beta15"       # GCE API version
 WAIT_MAX = 10                  # max wait iterations for startup-scripts
@@ -25,6 +24,10 @@ VERBOSE = False                # eat gcutil's stdout/stderr unless True
 import subprocess
 import os
 import sys
+
+# Moving below configuration block since the startup script only
+# works on Debian and was only tested with Wheezy images.
+IMAGE = "debian-7"
 
 if VERBOSE:
   NULL = None
