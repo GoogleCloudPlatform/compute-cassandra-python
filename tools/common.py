@@ -70,5 +70,5 @@ def get_image_path():
         path = line.split(',')[0]
         name = path.split('/')[-1]
         if name.startswith(IMAGE):
-            image_path = name 
+            image_path = path 
     return image_path
