@@ -130,7 +130,7 @@ def configure_nodes(cluster, script_path):
                 raise BE(err)
             print("."),
             sys.stdout.flush()
-    print("done."),
+    print("done.")
 
 # Perform variable substituions on the node_config_tmpl script
 def _update_node_script(variable_substitutes):
@@ -283,3 +283,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+    sys.exit(0)

@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Common global variables and functions
+# Global configuration variables
 NODES_PER_ZONE = 3             # define number of nodes to create in each
                                # zone.  GCE typically has two zones per region
                                # so this would create a 6 node C* cluster
@@ -34,8 +34,8 @@ API_VERSION = "v1beta15"       # GCE API version
 WAIT_MAX = 10                  # max wait-iterations for startup-script, the
                                # delay between each iteration is 20 seconds
 
-JRE6_VERSION = "jre1.6.0_45"   # version string of extracted JRE path
-JRE6_INSTALL = "jre-6u45-linux-x64.bin" # basenamne of downloaded JRE
+JRE6_VERSION = "jre1.6.0_45"   # path version string of extracted JRE
+JRE6_INSTALL = "jre-6u45-linux-x64.bin" # basenamne of downloaded JRE file
 
 VERBOSE = False                # eat gcutil's stdout/stderr unless True, if
                                # debugging script issues, set this to True

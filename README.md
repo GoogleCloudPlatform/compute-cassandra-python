@@ -4,21 +4,24 @@ This repository is intended to be a guideline for setting up a basic working
 Cassandra cluster utilizing Google Compute Engine resources.
 
 This material was developed using Cassandra 1.2.5, Debian Wheezy images,
-Python 2.7, and the OpenJDK 7 JRE (see Java below) available through the
-official Debian repository.
+Python 2.7, and the Oracle&#174; Java Runtime Engine (JRE) v1.6.
 
 ## Overview
 
 [Cassandra](http://cassandra.apache.org) is an open-source
 [NoSQL](http://en.wikipedia.org/wiki/Nosql) data store.  It is designed
 primarily to provide a robust fault tolerant distributed and decentralized
-data store that is highly durable and scalable.  It provides a SQL-like
-interface but is *not* equivalent with a traditional relational,
-ACID-compliant database like MySQL or PostgreSQL.  To learn much more about
-Cassandra, you can also reference the material published by Datastax on their
+data store that is highly durable and scalable.  It provides the Cassandra
+Query Language (CQL) tool which is SQL-like language for querying a
+Cassandra cluster.  Although CQL has many similarities to SQL, there are
+some fundamental differences.  CQL adheres to the Cassandra data model and
+architecture so some operations such as JOIN's are not available.
+To learn much more about Cassandra and CQL, you can also reference the
+material published by Datastax on their
 [resources page](http://www.datastax.com/resources).  This guide was developed
-using Datastax's [Community Edition](http://www.datastax.com/docs/quick_start/cassandra_quickstart) for Debian.
-
+using Datastax's
+[Community Edition](http://www.datastax.com/documentation/gettingstarted/getting_started/gettingStartedDeb_t.html)
+for Debian.
 
 Google Compute Engine (GCE) is a very good match for Cassandra users.  Some of
 GCE's features that make it a great fit are:
@@ -27,7 +30,8 @@ GCE's features that make it a great fit are:
 * Separate zones within a region to provide fault-tolerance within a region
 * Ability to scale up/down by adding and removing compute resources
 * A variety of compute machine types for standard or high memory/CPU needs
-* Bring up instances with a custom startup script
+* A Metadata service to store common configuration information or bring up
+  instances with a custom startup script
 * Persistent disks to preserve and share data between restarts and/or machines
 
 There is a lot to consider when getting ready to deploy a Cassandra cluster in
@@ -49,42 +53,66 @@ you will need a system with [`python`](http://www.python.org/) (at least 2.7)
 installed if you would like to use the provided scripts for deploying the
 example cluster.
 
-### A note about Java
+### Java&#174; Setup
 
-This guide intentionally uses OpenJDK 7.  At first glance, just about all
-documentation existing today advises that Cassandra 1.x be run using a
-proprietary JVM, at version 1.6.  However, after doing a bit more
-[digging](http://comments.gmane.org/gmane.comp.db.cassandra.devel/7504), the
-development community is pushing for OpenJDK 7 for Cassandra 2.x.  Other
-mailing list posts by committers have suggested trying OpenJDK 7 and reporting
-bugs.  Since this guide is not intended to be a production deployment guide,
-it made sense to further the cause of ensuring OpenJDK 7 is a good fit for
-Cassandra deployments.
+Datastax highly recommends against using the OpenJDK environment that is
+available in Debian Linux.  This guide was therefore developed using the
+Oracle Java Runtime Engine (JRE) 1.6.  If you intend to run the scripts
+included in this guide, you will first need to download the correct version
+from Oracle.  Save the file to the same computer that you will be using to
+run the setup scripts used in this guide.
 
-If readers do wish to use an alternate JVM with this guide, the included
-scripts can fairly easily be tweaked (e.g. minor edits to
-`tools/startup_script.sh` and `tools/create_cluster.py`).
+The scripts were developed using the `jre-6u45-linux-x64.bin` package.  You
+will be able to download the same file by visiting the "previous versions"
+section for [Oracle's SE Runtime Environment](http://goo.gl/TEuy0).  You
+will likely need to agree to Oracle's Binary Code License Agreement
+(and perhaps even create an Oracle account) before you will be able to
+download the file.
+
+Once downloaded, be sure to remember the location of the file.  You will
+need to provide the full pathname to the `tools/create_cluster.py` script.
 
 ## Default (weak) Cluster Settings
 
 Since this guide is intended as a non-production cluster, it uses a standard
 machine `n1-standard-1` type and *scratch disks* only.  Production clusters
-would probably use more powerful machines, persistent disks, and possibly more
+would likely need more powerful machines, persistent disks, and possibly more
 nodes depending on usage.
 
 The default settings for this guide live in `tools/common.py`.  You can make
-changes to the number of nodes in the cluster, machine type, image, and
+changes to the number of nodes in the cluster, machine type, and
 nodename prefix by editing these default global variables.  The relevant
 section of the file looks like:
   ```
-  NODES_PER_ZONE = 3             # likely a 6-node cluster
-  MAX_NODES = 9                  # upper limit on node count
-  NODE_PREFIX = "cassnode"       # all nodenames begin with this
-  IMAGE = "debian-7"             # either debian-6, debian-7, or centos-6
-  MACHINE_TYPE = "n1-standard-1" # basic machine type
-  API_VERSION = "v1beta15"       # GCE API version
-  WAIT_MAX = 10                  # max wait iterations for startup-scripts
-  VERBOSE = False                # eat gcutil's stdout/stderr unless True
+# Global configuration variables
+NODES_PER_ZONE = 3             # define number of nodes to create in each
+                               # zone.  GCE typically has two zones per region
+                               # so this would create a 6 node C* cluster
+
+MAX_NODES = 9                  # prevents excessive number of nodes to be
+                               # created.  if NODES_PER_ZONE * number_of_zones
+                               # is > than MAX_NODES, the script will raise an
+                               # error and exit.  GCE typically has 2 zones per
+                               # region (e.g. NODES_PER_ZONE * 2 < MAX_NODES)
+
+NODE_PREFIX = "cassnode"       # all nodenames begin with this string.  This is
+                               # how the scripts determine what nodes belong to
+                               # the C* cluster.
+
+MACHINE_TYPE = "n1-standard-1" # the machine type used for all cluster nodes
+
+API_VERSION = "v1beta15"       # GCE API version
+
+WAIT_MAX = 10                  # max wait-iterations for startup-script, the
+                               # delay between each iteration is 20 seconds
+
+JRE6_VERSION = "jre1.6.0_45"   # path version string of extracted JRE
+JRE6_INSTALL = "jre-6u45-linux-x64.bin" # basenamne of downloaded JRE file
+
+VERBOSE = False                # eat gcutil's stdout/stderr unless True, if
+                               # debugging script issues, set this to True
+                               # and re-run the scripts
+#############################################################################
   ```
 
 ## One-time Setup
@@ -124,10 +152,13 @@ network):
 
 ## Creating the Cluster
 
+1. As stated above in the Java section, please make sure you have downloaded
+`jre-6u45-linux-x64.bin` and saved the file locally.
+
 1. Create the new cluster using the provided script.
 
     ```
-    $ ./tools/create_cluster.py
+    $ ./tools/create_cluster.py path/to/jre-6u45-linux-x64.bin
     ```
 
 1. Go get a cup of tea (or other libation to the prophet
@@ -144,52 +175,35 @@ will see something similar to:
     --> Node cassnode-b-0 created
     --> Node cassnode-b-1 created
     --> Node cassnode-b-2 created
-    => Ensuring startup scripts are complete
-    *** warning: startup script not complete on node cassnode-b-2, sleeping 20 seconds
-    *** warning: startup script not complete on node cassnode-b-1, sleeping 20 seconds
-    --> Completion file exists on node cassnode-b-0
-    --> Completion file exists on node cassnode-a-0
-    *** warning: startup script not complete on node cassnode-a-2, sleeping 20 seconds
-    --> Completion file exists on node cassnode-a-1
-    *** warning: startup script not complete on node cassnode-b-2, sleeping 20 seconds
-    --> Completion file exists on node cassnode-b-1
-    *** warning: startup script not complete on node cassnode-a-2, sleeping 20 seconds
-    *** warning: startup script not complete on node cassnode-b-2, sleeping 20 seconds
-    *** warning: startup script not complete on node cassnode-a-2, sleeping 20 seconds
-    --> Completion file exists on node cassnode-b-2
-    *** warning: startup script not complete on node cassnode-a-2, sleeping 20 seconds
-    *** warning: startup script not complete on node cassnode-a-2, sleeping 20 seconds
-    *** warning: startup script not complete on node cassnode-a-2, sleeping 20 seconds
-    --> Completion file exists on node cassnode-a-2
-    => Adding SEED nodes to cassandra configs
-    => Updating Snitch file on nodes
-    => Starting cassandra cluster SEED nodes
-    --> Attempting to start cassandra on node cassnode-b-2 UP
-    --> Attempting to start cassandra on node cassnode-a-0 UP
-    => Starting cassandra cluster non-SEED nodes
+    => Uploading JRE install file to each cluster node: . . . . . . done.
+    => Uploading and running configure script on nodes: . . . . . . done.
+    => Starting cassandra cluster on SEED nodes
     --> Attempting to start cassandra on node cassnode-b-1 UP
-    --> Attempting to start cassandra on node cassnode-b-0 UP
     --> Attempting to start cassandra on node cassnode-a-2 UP
+    => Starting cassandra cluster non-SEED nodes
+    --> Attempting to start cassandra on node cassnode-b-0 UP
+    --> Attempting to start cassandra on node cassnode-b-2 UP
     --> Attempting to start cassandra on node cassnode-a-1 UP
+    --> Attempting to start cassandra on node cassnode-a-0 UP
     => Cassandra cluster is up and running on all nodes
     => Sleeping 60 seconds to give nodes time to join cluster
-    => Output from node cassnode-b-2 and 'nodetool status'
+    => Output from node cassnode-b-1 and 'nodetool status'
     Datacenter: ZONE1
     =================
     Status=Up/Down
     |/ State=Normal/Leaving/Joining/Moving
-    --  Address         Load       Tokens  Owns (effective)  Host ID                               Rack
-    UN  10.240.205.20   92.62 KB   256     18.3%             8fc829de-65c9-4b43-ab6f-f58c65932366  RAC1
-    UN  10.240.194.246  85.26 KB   256     16.1%             aae9d759-2c3c-47a4-981f-43506b449433  RAC1
-    UN  10.240.205.228  109.85 KB  256     17.1%             eeaa960d-c1d7-4e46-8d43-fee54dce2b03  RAC1
+    --  Address         Load       Tokens   Owns (effective)  Host ID                               Rack
+    UN  10.240.101.202  97.38 KB   256      15.6%             557db8f8-5fc1-4575-bc80-d4f9c855690a  RAC1
+    UN  10.240.160.88   97.38 KB   256      17.9%             45c00bb9-b4da-45de-86fc-97f020998336  RAC1
+    UN  10.240.155.155  103.42 KB  256      16.9%             bbc373ed-0259-46c1-a3b3-177d2383526a  RAC1
     Datacenter: ZONE2
     =================
     Status=Up/Down
     |/ State=Normal/Leaving/Joining/Moving
-    --  Address         Load       Tokens  Owns (effective)  Host ID                               Rack
-    UN  10.240.221.31   71.83 KB   256     16.3%             904d64bd-ce95-4dd7-900e-2441a604f6f7  RAC1
-    UN  10.240.89.53    98.73 KB   256     16.1%             3d0c0953-acc9-4b3e-9062-17792b4d4c1a  RAC1
-    UN  10.240.169.136  98.74 KB   256     16.1%             9ca89253-59aa-4639-9959-b719f0465b5b  RAC1
+    --  Address         Load       Tokens   Owns (effective)  Host ID                               Rack
+    UN  10.240.115.159  97.2 KB    256      15.8%             04cec381-00f1-4e0b-8be4-82c062743bf7  RAC1
+    UN  10.240.191.62   83.37 KB   256      17.5%             2ea44ff3-8b18-4c22-a0a5-8836ffaf9362  RAC1
+    UN  10.240.116.10   98.77 KB   256      16.3%             5ecd834e-a253-4ec7-b9sb-d46efb655f02  RAC1
     ```
 
 ### So what just happened?
@@ -201,25 +215,20 @@ maintenance window).  In the output above, the script selects zones
 1. Next, the script creates 3 `n1-standard-1` instances running `debian-7`
 in each zone.  The nodename is computed by concatenating the NODE_PREFIX
 defined in `tools/common.py`, a dash, the zone designator, another dash,
-and an incrementing integer (e.g. `cassnode-a-0` or `cassnode-b-2`).
-1. When an instance is created, a custom script is executed by using GCE's
-metadata feature.  The commands to be executed on a newly created instance
-can be found in `tools/startup_script.sh`.  The last command in this script
-is to create an empty file in a specific location.  The
-`tools/create_cluster.py` iterates through the nodes and checks to see if
-that marker file has been created and sleeps between each check.  Once all
-nodes possess the marker file, the script continues.
-1. Next, each node needs a few of its Cassandra configuration files updated.
-The script selects one node from each zone to act as a SEED node.  Each
-node's `/etc/cassandra/cassandra.yaml` file is updated with the IP addresses
-of the SEED nodes.
-1. This guide uses mutliple zones and therefore a custom PropertyFileSnitch
-is generated with the IP addressess of all nodes in the cluster.  This data
-is written to each node's `/etc/cassandra/cassandra-topology.properties`
-file.
-1. Next, the Cassandra service is started on the two SEED nodes.  In the
-example above, this was `cassnode-b-2` and `cassnode-a-0` which were randomly
-chosen.  The remaining non-SEED nodes are then also brought up.
+and an incrementing integer (e.g. `cassnode-a-0`, `cassnode-a-1`, ...).
+1. The script then uses the `gcutil push` feature to upload the JRE file to
+each node in the cluster.
+1. Now that each node in the cluster is up and running, the script then
+uses some of that node information to create a customized install script
+based on the included `tools/node_config_tmpl` file and saves that to
+`tools/node_config_tmpl.sh`.
+1. Next, the generated install script, `tools/node_config_tmpl.sh` is executed
+on each node in the cluster.  The install script handles updating Debian
+packages, installing Cassandra, setting up the Cassandra configuration files,
+and installing the JRE that was uploaded to each node.
+1. The Cassandra service is started on two SEED nodes, one in each
+zone.  In the example above, this was `cassnode-a-2` and `cassnode-b-1` which
+were randomly chosen.  The remaining non-SEED nodes are then also brought up.
 1. Finally, the script pauses for a minute to ensure all nodes have had a
 chance to discover each other and exchange data via the gossip protocol.  To
 verify that the Cassandra cluster is actually running, the `nodetool status`
@@ -228,7 +237,7 @@ an entry for all 6 nodes in the cluster, 3 per zone.
 
 ## Destroying the cluster
 
-There is a script that will delete all nodes with names starting with the
+There is a script that will delete all nodes with node names starting with the
 NODE_PREFIX.  You can use this to purge the cluster if something goes wrong
 and want to start over, or if you're done with the guide and don't want to
 be charged for running instances.  It will list out the matching instances
@@ -339,15 +348,15 @@ data exists in two nodes in each zone.
   ```
   $ gcutil ssh --zone us-central1-a cassnode-a-2
   $ nodetool getendpoints demo characters name
-  10.240.221.31   # cassnode-a-0
-  10.240.89.53    # cassnode-a-2
-  10.240.194.246  # cassnode-b-1
-  10.240.205.20   # cassnode-b-2
+  10.240.101.202  # cassnode-a-0
+  10.240.155.155  # cassnode-a-2
+  10.240.191.62   # cassnode-b-1
+  10.240.116.10   # cassnode-b-2
   $ nodetool getendpoints demo characters appearances
-  10.240.221.31   # cassnode-a-0
-  10.240.169.136  # cassnode-a-1
-  10.240.205.228  # cassnode-b-0
-  10.240.194.246  # cassnode-b-1
+  10.240.101.202  # cassnode-a-0
+  10.240.160.88   # cassnode-a-1
+  10.240.115.159  # cassnode-b-0
+  10.240.191.62   # cassnode-b-1
   ```
 ## Debugging / Troubleshooting
 
@@ -362,14 +371,9 @@ will see all of the standard output and error messages from `gcutil`.
 1. In order to understand what's going on with a cluster deployment with these
 scripts, you will likely need to either use the web console and check the
 instance's serial output or SSH into the instance and monitor log files.  In
-addition to standard log files, two that you should observe are:
- * `/var/log/startupscript.log` - Log for metadata startup-script
+addition to standard Linux log files, you may need to consult the Cassandra
+log files, especially:
  * `/var/log/cassandra/output.log` - Cassandra log
-
- Note that these scripts were *not* tested on a Windows system.  Some effort
- was put into using platform-safe commands (e.g. `os.path.sep`).  But it was
- only tested on Linux and Mac.  Since these scripts only rely on `python`
- and `gcutil`, they *should* also work on Windows.
 
 1. Ensure that your firewall rule is enabled so that the Cassandra nodes
 are accessible with by both Thrift and CQL protocols.
@@ -390,9 +394,35 @@ In summary, this guide showed that Google's Compute Engine is a good fit
 for Cassandra deployments by:
 
 * Taking advantage of mutliple zones within a region
-* Metadata hooks to customize your instances when they are created
 * The (under the hood) capabilities of `gcutil` to easily manage your instances
 * The ease with which a Cassandra cluster can be created and destroyed
+
+### Extending this guide with Metadata startup scripts
+
+This guide did not take advantage of a powerful GCE feature that allows a
+newly created instance to execute a
+[startup-script](https://developers.google.com/compute/docs/howtos/startupscript).
+Rather, the scripts in this guide invoked `gcutil ssh` to execute the
+post-boot `tools/node_config_tmpl.sh` node configuration script.
+
+So a great next step would be to extend this guide to utilize the GCE startup
+script feature.  Using this feature, additional Cassandra nodes could quickly
+and easily be created and automatically configured as soon as they finished
+booting.  This could be accomplished by,
+
+ * Pre-download the Oracle JRE and upload it to a bucket in
+   [Google Cloud Storage](https://cloud.google.com/products/cloud-storage)
+   (GCS) after agreeing to the licensing terms.
+ * Modify the `tools/node_configure_tmpl` script to be executed as a Metadata
+   startup-script.
+ * Modify the startup-script to download the Oracle JRE from the GCS bucket.
+ * As nodes are created/destroyed, use the
+   [Metadata service](https://developers.google.com/compute/docs/metadata) to
+   store SEED IP addresses and a newly computed PropertyFileSnitch file
+   contents.
+ * Lastly, the startup-script could pull down the updated PropertyFileSnitch
+   and fire up the Cassandra service.  New nodes would automatically join the
+   Cassandra cluster via the gossip protocol and begin replicating data.
 
 ## Contributing changes
 
@@ -401,3 +431,8 @@ for Cassandra deployments by:
 ## Licensing
 
 * See [LICENSE](https://github.com/GoogleCloudPlatform/compute-cassandra-python/blob/master/LICENSE)
+
+## Credits
+
+* Oracle and Java are registered trademarks of Oracle and/or its affiliates.
+  Other names may be trademarks of their respective owners
