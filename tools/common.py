@@ -45,8 +45,8 @@ import subprocess
 import os
 import sys
 
-# Moving this out of the config block above to prevent users from
-# changing it to debian-6 or centos-6.
+# Moving below configuration block since the startup script only
+# works on Debian and was only tested with Wheezy images.
 IMAGE = "debian-7"
 
 if VERBOSE:
@@ -93,5 +93,5 @@ def get_image_path():
         path = line.split(',')[0]
         name = path.split('/')[-1]
         if name.startswith(IMAGE):
-            image_path = path
+            image_path = path 
     return image_path
