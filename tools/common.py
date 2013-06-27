@@ -13,31 +13,31 @@
 # limitations under the License.
 
 # Global configuration variables
-NODES_PER_ZONE = 3             # define number of nodes to create in each
+NODES_PER_ZONE = 3             # Define number of nodes to create in each
                                # zone.  GCE typically has two zones per region
                                # so this would create a 6 node C* cluster
 
-MAX_NODES = 9                  # prevents excessive number of nodes to be
-                               # created.  if NODES_PER_ZONE * number_of_zones
+MAX_NODES = 9                  # Prevents excessive number of nodes to be
+                               # created.  If NODES_PER_ZONE * number_of_zones
                                # is > than MAX_NODES, the script will raise an
                                # error and exit.  GCE typically has 2 zones per
                                # region (e.g. NODES_PER_ZONE * 2 < MAX_NODES)
 
-NODE_PREFIX = "cassnode"       # all nodenames begin with this string.  This is
+NODE_PREFIX = "cassnode"       # All nodenames begin with this string.  This is
                                # how the scripts determine what nodes belong to
                                # the C* cluster.
 
-MACHINE_TYPE = "n1-standard-1" # the machine type used for all cluster nodes
+MACHINE_TYPE = "n1-standard-1" # The machine type used for all cluster nodes
 
 API_VERSION = "v1beta15"       # GCE API version
 
-WAIT_MAX = 10                  # max wait-iterations for startup-script, the
+WAIT_MAX = 10                  # Max wait-iterations for startup-script, the
                                # delay between each iteration is 20 seconds
 
-JRE6_VERSION = "jre1.6.0_45"   # path version string of extracted JRE
-JRE6_INSTALL = "jre-6u45-linux-x64.bin" # basenamne of downloaded JRE file
+JRE6_VERSION = "jre1.6.0_45"   # Path version string of extracted JRE
+JRE6_INSTALL = "jre-6u45-linux-x64.bin" # Basenamne of downloaded JRE file
 
-VERBOSE = False                # eat gcutil's stdout/stderr unless True, if
+VERBOSE = False                # Eat gcutil's stdout/stderr unless True. If
                                # debugging script issues, set this to True
                                # and re-run the scripts
 #############################################################################
