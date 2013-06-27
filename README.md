@@ -222,7 +222,7 @@ each node in the cluster.
 uses some of that node information to create a customized install script
 based on the included `tools/node_config_tmpl` file and saves that to
 `tools/node_config_tmpl.sh`.
-1. Next, the generated install script, `tools/node_config_tmpl.sh` is executed
+1. Next, the generated install script, `tools/node_config_tmpl.sh` executes
 on each node in the cluster.  The install script handles updating Debian
 packages, installing Cassandra, setting up the Cassandra configuration files,
 and installing the JRE that was uploaded to each node.
@@ -237,7 +237,7 @@ an entry for all 6 nodes in the cluster, 3 per zone.
 
 ## Destroying the cluster
 
-There is a script that will delete all nodes with node names starting with the
+There is a script that will delete all nodes with names starting with the
 NODE_PREFIX.  You can use this to purge the cluster if something goes wrong
 and want to start over, or if you're done with the guide and don't want to
 be charged for running instances.  It will list out the matching instances
@@ -405,10 +405,10 @@ newly created instance to execute a
 Rather, the scripts in this guide invoked `gcutil ssh` to execute the
 post-boot `tools/node_config_tmpl.sh` node configuration script.
 
-So a great next step would be to extend this guide to utilize the GCE startup
-script feature.  Using this feature, additional Cassandra nodes could quickly
-and easily be created and automatically configured as soon as they finished
-booting.  This could be accomplished by,
+So a great next step would be to utilize the GCE startup script feature.
+Using this feature, additional Cassandra nodes could quickly and easily be
+created and automatically configured as soon as they finished booting.
+This could be accomplished by,
 
  * Pre-download the Oracle JRE and upload it to a bucket in
    [Google Cloud Storage](https://cloud.google.com/products/cloud-storage)
