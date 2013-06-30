@@ -15,9 +15,9 @@ data store that is highly durable and scalable.  It provides the Cassandra
 Query Language (CQL) tool which is SQL-like language for querying a
 Cassandra cluster.  Although CQL has many similarities to SQL, there are
 some fundamental differences.  CQL adheres to the Cassandra data model and
-architecture so some operations such as JOIN's are not available.
-To learn much more about Cassandra and CQL, you can also reference the
-material published by Datastax on their
+architecture so some operations and clauses (such as joins and subclauses) are
+not available.  To learn much more about Cassandra and CQL, you can also
+reference the material published by Datastax on their
 [resources page](http://www.datastax.com/resources).  This guide was developed
 using Datastax's
 [Community Edition](http://www.datastax.com/documentation/gettingstarted/getting_started/gettingStartedDeb_t.html)
