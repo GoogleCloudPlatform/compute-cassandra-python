@@ -376,7 +376,7 @@ log files, especially:
  * `/var/log/cassandra/output.log` - Cassandra log
 
 1. Ensure that your firewall rule is enabled so that the Cassandra nodes
-are accessible with by both Thrift and CQL protocols.
+are accessible by both Thrift and CQL protocols.
 
 1. If you are having problems with Cassandra, then you can look for help on
 mailing lists, forums, Stack Overflow, or IRC.  In other words, if the nodes
