@@ -196,8 +196,7 @@ def node_start_cassandra(zone, nodename):
                 "ssh", "--zone=%s" % zone, nodename,
                 "sudo rm /var/run/cassandra.pid"], stdout=NULL, stderr=NULL)
         _ = subprocess.call(["gcutil", "--service_version=%s" % API_VERSION,
-                "ssh", "--zone=%s" % zone, nodename,
-                "sudo rm -rf /var/lib/cassandra/*"], stdout=NULL, stderr=NULL)
+                "ssh", "--zone=%s" % zone, nodename"], stdout=NULL, stderr=NULL)
         _ = subprocess.call(["gcutil", "--service_version=%s" % API_VERSION,
                 "ssh", "--zone=%s" % zone,nodename,
                 "sudo service cassandra start"], stdout=NULL, stderr=NULL)
