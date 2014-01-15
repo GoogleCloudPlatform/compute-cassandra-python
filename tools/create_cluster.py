@@ -30,11 +30,11 @@ def find_zones():
     """Find a US region with at least two UP zones."""
     print("=> Finding suitable region, selecting zones:"),
     regions = subprocess.check_output(["gcutil", "--service_version",
-            API_VERSION, "--format", "names", "listregions", "--filter",
+            API_VERSION, "--format=names", "listregions", "--filter",
             "name eq 'us.*'"], stderr=NULL).split('\n')[0:-1]
     for region in regions:
         zones = subprocess.check_output(["gcutil", "--service_version",
-                API_VERSION, "--format", "names", "listzones", "--filter",
+                API_VERSION, "--format=names", "listzones", "--filter",
                 "status eq UP", "--filter", "name eq '%s.*'" % region],
                 stderr=NULL).split('\n')[0:-1]
         if len(zones) > 1:
@@ -42,16 +42,12 @@ def find_zones():
             return zones
     raise BE("Error: No suitable US regions found with 2+ zones")
 
+
 # Create all nodes synchronously
 def create_nodes(zones):
     """Create all nodes synchronously."""
     print("=> Creating %d '%s' '%s' nodes" % (NODES_PER_ZONE*len(zones),
             IMAGE, MACHINE_TYPE))
-
-    img_path = get_image_path()
-    if img_path is None:
-        raise BE("Error: No matching IMAGE for '%s'" % IMAGE)
-    img = "https://www.googleapis.com/compute/%s/%s" % (API_VERSION, img_path)
 
     for zone in zones:
         for i in range(NODES_PER_ZONE):
@@ -60,54 +56,28 @@ def create_nodes(zones):
             r = subprocess.call(["gcutil",
                     "--service_version=%s" % API_VERSION,
                     "addinstance", nodename, "--zone=%s" % zone,
-                    "--machine_type=%s" % MACHINE_TYPE, "--network=default",
-                    "--external_ip_address=ephemeral",
-                    "--image=%s" % img, "--persistent_boot_disk=false",
-                    "--synchronous_mode"], stdout=NULL, stderr=NULL)
+                    "--machine_type=%s" % MACHINE_TYPE, "--image=%s" % IMAGE,
+                    "--service_account_scopes=%s" % SCOPES,
+                    "--wait_until_running"], stdout=NULL, stderr=NULL)
             if r != 0:
                 raise BE("Error: could not create node %s" % nodename)
             print("--> Node %s created" % nodename)
-
-
-# Upload JRE install file to each cluster node
-def upload_jre(cluster, jre_path):
-    """Upload JRE install file to each cluster node."""
-    print("=> Uploading JRE install file to each cluster node:"),
-    jre = os.path.basename(jre_path)
-    for zone in cluster.keys():
-        for node in cluster[zone]:
-            # create directory on node
-            _ = subprocess.call(["gcutil",
-                    "--service_version=%s" % API_VERSION, "ssh",
-                    "--zone=%s" % zone, node['name'],
-                    "sudo mkdir -p /usr/java/latest"], stdout=NULL, stderr=NULL)
-            # push JRE file up
-            _ = subprocess.call(["gcutil",
-                    "--service_version=%s" % API_VERSION, "push",
-                    "--zone=%s" % zone, node['name'], jre_path,
-                    "/tmp/%s" % jre], stdout=NULL, stderr=NULL)
-            _ = subprocess.call(["gcutil",
-                    "--service_version=%s" % API_VERSION, "ssh",
-                    "--zone=%s" % zone, node['name'],
-                    "sudo cp /tmp/%s /usr/java/latest" % jre],
-                    stdout=NULL, stderr=NULL)
-            print("."),
-            sys.stdout.flush()
-    print("done.")
 
 
 # Customize node_config_tmpl script
 def customize_config_script(cluster):
     """Customize the node_config_tmpl script"""
     variable_substitutes = {
-        '@JRE6_INSTALL@': JRE6_INSTALL,
-        '@JRE6_VERSION@': JRE6_VERSION
+        '@GCS_BUCKET@': GCS_BUCKET,
+        '@JRE7_INSTALL@': JRE7_INSTALL,
+        '@JRE7_VERSION@': JRE7_VERSION
     }
     seed_data, seed_ips = _identify_seeds(cluster)
     variable_substitutes['@SEED_IPS@'] = ",".join(seed_ips)
     variable_substitutes['@SNITCH_TEXT@'] = _generate_snitch_text(cluster)
     script_path = _update_node_script(variable_substitutes)
     return seed_data, script_path
+
 
 # Configure each cluster node
 def configure_nodes(cluster, script_path):
@@ -267,7 +237,6 @@ def main():
     # Create the nodes, upload/install JRE, customize/execute config script
     create_nodes(zones)
     cluster = get_cluster()
-    upload_jre(cluster, jre_path)
     seed_data, script_path = customize_config_script(cluster)
     configure_nodes(cluster, script_path)
 
