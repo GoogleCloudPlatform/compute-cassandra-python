@@ -49,12 +49,12 @@ EOF
 
 # Assume the JRE install file has already been uploaded to the GCS bucket, so
 # use the GCE username to fetch it from GCS
-su -lc "gsutil cp gs://${gcs_bucket}/${jre_install_file} /root/${jre_install_file}" ${gce_username}
+su -lc "gsutil cp gs://${gcs_bucket}/${jre_install_file} /tmp/${jre_install_file}" ${gce_username}
 
 # Set up Java per,
 # http://www.datastax.com/documentation/cassandra/2.0/webhelp/cassandra/install/installJreDeb.html
 mkdir -p /usr/lib/jvm
-tar zxvf /root/${jre_install_file} -C /usr/lib/jvm
+tar zxvf /tmp/${jre_install_file} -C /usr/lib/jvm
 update-alternatives --install "/usr/bin/java" "java" "/usr/lib/jvm/${jre_version}/bin/java" 1
 update-alternatives --set java /usr/lib/jvm/${jre_version}/bin/java
 
