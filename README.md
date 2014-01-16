@@ -152,10 +152,13 @@ network):
 have downloaded the JRE 1.7 install file, you will need to upload it to a
 Google Cloud Storage bucket. Make sure to update `tools/common.py`  to specify
 your bucket name and adjust the JRE7 variables if needed. The `gsutil` utility
-is included in the Cloud SDK and you can use the following commands to create a
-bucket and upload the JRE file:
+is included in the Cloud SDK.
+Create a bucket with:
   ```
   $ gsutil mb gs://mybucket
+  ```
+Then update the JRE with:
+  ```
   $ gsutil cp jre-7u51-linu-x64.tar.gz gs://mybucket
   ```
 
