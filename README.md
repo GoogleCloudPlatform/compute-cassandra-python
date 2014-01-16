@@ -150,10 +150,9 @@ network):
   ```
 1. Upload the JRE install file to a Google Cloud Storage bucket. After you
 have downloaded the JRE 1.7 install file, you will need to upload it to a
-Google Cloud Storage bucket. Make sure to update `tools/common.py` and set
-the `GCS_BUCKET` variable to your bucket name. Also adjust the JRE7 variables
-if you're using a different version of the installer. The `gsutil` utility is
-included in the Cloud SDK and you can use the following commands to create a
+Google Cloud Storage bucket. Make sure to update `tools/common.py`  to specify
+your bucket name and adjust the JRE7 variables if needed. The `gsutil` utility
+is included in the Cloud SDK and you can use the following commands to create a
 bucket and upload the JRE file:
   ```
   $ gsutil mb gs://mybucket
@@ -428,8 +427,8 @@ Using this feature, additional Cassandra nodes could quickly and easily be
 created and automatically configured as soon as they finished booting.
 This could be accomplished by,
 
- * Modify the `tools/node_configure_tmpl` script to be executed as a Metadata
-   startup-script.
+ * Updating the `tools/node_configure_tmpl` script to be executed as a
+   Metadata startup-script.
  * As nodes are created/destroyed, use the
    [Metadata service](https://developers.google.com/compute/docs/metadata) to
    store SEED IP addresses and a newly computed PropertyFileSnitch file
