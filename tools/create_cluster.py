@@ -68,6 +68,7 @@ def create_nodes(zones):
 def customize_config_script(cluster):
     """Customize the node_config_tmpl script"""
     variable_substitutes = {
+        '@GCE_USERNAME@': GCE_USERNAME,
         '@GCS_BUCKET@': GCS_BUCKET,
         '@JRE7_INSTALL@': JRE7_INSTALL,
         '@JRE7_VERSION@': JRE7_VERSION
@@ -102,6 +103,7 @@ def configure_nodes(cluster, script_path):
             sys.stdout.flush()
     print("done.")
 
+
 # Perform variable substituions on the node_config_tmpl script
 def _update_node_script(variable_substitutes):
     """Update the node_config_tmpl script"""
@@ -118,6 +120,7 @@ def _update_node_script(variable_substitutes):
     template_fh.close()
     script_fh.close()
     return script_path
+
 
 # Update the SEED list on each node.
 def _identify_seeds(cluster):
@@ -164,7 +167,8 @@ def node_start_cassandra(zone, nodename):
                 "sudo service cassandra stop"], stdout=NULL, stderr=NULL)
         _ = subprocess.call(["gcutil", "--service_version=%s" % API_VERSION,
                 "ssh", "--zone=%s" % zone, nodename,
-                "sudo rm /var/run/cassandra.pid"], stdout=NULL, stderr=NULL)
+                "sudo rm -f /var/run/cassandra/cassandra.pid"],
+                stdout=NULL, stderr=NULL)
         _ = subprocess.call(["gcutil", "--service_version=%s" % API_VERSION,
                 "ssh", "--zone=%s" % zone, nodename,
                 "sudo rm -rf /var/lib/cassandra/*"], stdout=NULL, stderr=NULL)
@@ -173,7 +177,8 @@ def node_start_cassandra(zone, nodename):
                 "sudo service cassandra start"], stdout=NULL, stderr=NULL)
         r = subprocess.call(["gcutil", "--service_version=%s" % API_VERSION,
                 "ssh", "--zone=%s" % zone,nodename,
-                "ls /var/run/cassandra.pid"], stdout=NULL, stderr=NULL)
+                "sudo ls /var/run/cassandra/cassandra.pid"],
+                stdout=NULL, stderr=NULL)
         if r == 0:
             status = "ok"
             print("UP")
@@ -217,15 +222,6 @@ def verify_cluster(cluster):
 
 
 def main():
-    if len(sys.argv) != 2 or not os.path.exists(sys.argv[1]):
-        raise BE("Error: Must provide location of Oracle JRE")
-    jre_path = sys.argv[1]
-    jre_file = os.path.basename(jre_path)
-    if jre_file != JRE6_INSTALL:
-        err = "Error: JRE version mismatch, expecting "
-        err += "'%s' but got '%s'" % (JRE6_INSTALL, jre_file)
-        raise BE(err)
-
     # Find a suitable US region with more than a single UP zone.
     zones = find_zones()
     # Make sure we don't exceed MAX_NODES.
@@ -236,9 +232,11 @@ def main():
 
     # Create the nodes, upload/install JRE, customize/execute config script
     create_nodes(zones)
+    time.sleep(20) # wait 20s for ssh to start
     cluster = get_cluster()
     seed_data, script_path = customize_config_script(cluster)
     configure_nodes(cluster, script_path)
+    time.sleep(20) # wait 20s to start up nodes
 
     # Bring up the cluster and give it a minute for nodes to join.
     start_cluster(seed_data, cluster)

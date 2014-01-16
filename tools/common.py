@@ -74,7 +74,7 @@ if not GCE_USERNAME:
             or os.getenv('LOGNAME')
             or os.getenv('HOME').split(os.sep)[-1])
     if not GCE_USERNAME:
-        BE("Must set GCE_USERNAME in tools/common.py")
+        raise BE("Must set GCE_USERNAME in tools/common.py")
 
 # Internal data structure for the cluster is a dict by 'zone', with a list
 # of dicts containing 'name' and 'ip'
@@ -94,12 +94,13 @@ def get_cluster():
             "listinstances", "--filter=%s" % pattern],
             stderr=NULL).split('\n')[1:-1]
     for line in csv:
+        # name,zone,status,network-ip,external-ip
         p = line.split(',')
         zone = p[1]
         if zone in cluster:
-            cluster[zone].append({'name':p[0], 'ip':p[4], 'zone':zone})
+            cluster[zone].append({'name':p[0], 'ip':p[3], 'zone':zone})
         else:
-            cluster[zone] = [{'name':p[0], 'ip':p[4], 'zone':zone}]
+            cluster[zone] = [{'name':p[0], 'ip':p[3], 'zone':zone}]
     return cluster
 
 # Return the image URL that matches IMAGE defined above

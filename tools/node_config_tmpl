@@ -42,7 +42,18 @@ sed -i "s|^listen_address: localhost$|listen_address: ${intip}|" $CONF
 sed -i "s|^rpc_address: localhost$|rpc_address: 0.0.0.0|" $CONF
 sed -i "s|^# num_tokens: 256$|num_tokens: 256|" $CONF
 sed -i "s|^endpoint_snitch: SimpleSnitch$|endpoint_snitch: PropertyFileSnitch|" $CONF
-sed -i "s|seeds: \"127.0.0.1\"|seeds: 127.0.0.1,@SEED_IPS@|" $CONF
+sed -i "s|seeds: \"127.0.0.1\"|seeds: \"@SEED_IPS@\"|" $CONF
+echo "" >> $CONF
+echo "##############################################################" >> $CONF
+echo "##############################################################" >> $CONF
+echo "# WARNING!! Remove 'auto_bootstrap' if you intend on using" >> $CONF
+echo "#           this as a long running cluster. This setting is" >> $CONF
+echo "#           *ONLY* intended for bootstrapping a fresh cluster" >>  $CONF
+echo "#           with NO EXISTING DATA. See the following,        " >>  $CONF
+echo "#           http://goo.gl/v5wdBA                             " >>  $CONF
+echo "auto_bootstrap: false" >> $CONF
+echo "##############################################################" >> $CONF
+echo "##############################################################" >> $CONF
 cat > /etc/cassandra/cassandra-topology.properties <<EOF
 @SNITCH_TEXT@
 EOF
