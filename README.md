@@ -3,8 +3,8 @@
 This repository is intended to be a guideline for setting up a basic working
 Cassandra cluster utilizing Google Compute Engine resources.
 
-This material was developed using Cassandra 1.2.5, Debian Wheezy images,
-Python 2.7, and the Oracle&#174; Java Runtime Engine (JRE) v1.6.
+This material was developed using Cassandra 2.0.4, Debian-7 Wheezy images,
+Python 2.7, and the Oracle&#174; Java Runtime Engine (JRE) v1.7.
 
 ## Overview
 
@@ -20,7 +20,7 @@ not available.  To learn much more about Cassandra and CQL, you can also
 reference the material published by Datastax on their
 [resources page](http://www.datastax.com/resources).  This guide was developed
 using Datastax's
-[Community Edition](http://www.datastax.com/documentation/gettingstarted/getting_started/gettingStartedDeb_t.html)
+[Community Edition](http://www.datastax.com/documentation/gettingstarted/index.html?pagename=docs&version=quick_start&file=quickstart#getting_started/gettingStartedDeb_t.html)
 for Debian.
 
 Google Compute Engine (GCE) is a very good match for Cassandra users.  Some of
@@ -45,39 +45,34 @@ clusters.
 ### Prerequisites
 
 This guide assumes you have registered a
-[Google Cloud Platform](https://cloud.google.com/) account and have added the
-Google Compute Engine service.  It also assumes you have installed
-[`gcutil`](https://developers.google.com/compute/docs/gcutil/), the
-command-line utility used to manage Google Compute Engine resources.  Lastly,
-you will need a system with [`python`](http://www.python.org/) (at least 2.7)
-installed if you would like to use the provided scripts for deploying the
-example cluster.
+[Google Cloud Platform](https://cloud.google.com/) account and have enabled
+both the Google Compute Engine and Google Cloud Storage services.  It also
+assumes you have installed the `gcutil` and `gsutil` command-line utilities
+bundled with the [Google Cloud SDK](https://developers.google.com/cloud/sdk/).
+Lastly, you will need a system with [`python`](http://www.python.org/) (at
+least 2.7) installed if you would like to use the provided scripts for
+deploying the example cluster.
 
-### Java&#174; Setup
+### Java&#174;
 
 Datastax highly recommends against using the OpenJDK environment that is
 available in Debian Linux.  This guide was therefore developed using the
-Oracle Java Runtime Engine (JRE) 1.6.  If you intend to run the scripts
+Oracle Java Runtime Engine (JRE) 1.7.  If you intend to run the scripts
 included in this guide, you will first need to download the correct version
-from Oracle.  Save the file to the same computer that you will be using to
-run the setup scripts used in this guide.
+from Oracle.
 
-The scripts were developed using the `jre-6u45-linux-x64.bin` package.  You
-will be able to download the same file by visiting the "previous versions"
-section for [Oracle's SE Runtime Environment](http://goo.gl/TEuy0).  You
-will likely need to agree to Oracle's Binary Code License Agreement
+The scripts were developed using the `jre-7u51-linux-x64.tar.gz` package.
+You will likely need to agree to Oracle's Binary Code License Agreement
 (and perhaps even create an Oracle account) before you will be able to
-download the file.
-
-Once downloaded, be sure to remember the location of the file.  You will
-need to provide the full pathname to the `tools/create_cluster.py` script.
+download the file.  Once downloaded, be sure to remember the location of the
+file.
 
 ## Default (weak) Cluster Settings
 
 Since this guide is intended as a non-production cluster, it uses a standard
-machine `n1-standard-1` type and *scratch disks* only.  Production clusters
-would likely need more powerful machines, persistent disks, and possibly more
-nodes depending on usage.
+machine `n1-standard-1` type.  Production clusters would likely need more
+powerful machines, additional persistent disks, and possibly more nodes
+depending on usage.
 
 The default settings for this guide live in `tools/common.py`.  You can make
 changes to the number of nodes in the cluster, machine type, and
@@ -101,14 +96,23 @@ NODE_PREFIX = "cassnode"       # all nodenames begin with this string.  This is
 
 MACHINE_TYPE = "n1-standard-1" # the machine type used for all cluster nodes
 
-API_VERSION = "v1beta15"       # GCE API version
+API_VERSION = "v1"             # GCE API version
 
 WAIT_MAX = 10                  # max wait-iterations for startup-script, the
                                # delay between each iteration is 20 seconds
 
-JRE6_VERSION = "jre1.6.0_45"   # path version string of extracted JRE
-JRE6_INSTALL = "jre-6u45-linux-x64.bin" # basenamne of downloaded JRE file
-
+SCOPES = "userinfo-email,compute-rw,storage-full" # Scopes set to match same    
+                               # default scopes as Cloud Console                
+                                                                                
+GCE_USERNAME = ""              # Use this to override the local environment.    
+                               # This username must exist on the newly created  
+                               # GCE instances in order to fetch the JRE        
+                               # install file from GCS                          
+                                                                                
+GCS_BUCKET = "mybucket"        # Specify bucket housing JRE7 install file       
+JRE7_INSTALL = "jre-7u51-linux-x64.tar.gz" # Basenamne of downloaded JRE file   
+JRE7_VERSION = "jre1.7.0_51"   # Path version string of extracted JRE           
+                                                                                
 VERBOSE = False                # eat gcutil's stdout/stderr unless True, if
                                # debugging script issues, set this to True
                                # and re-run the scripts
@@ -117,28 +121,23 @@ VERBOSE = False                # eat gcutil's stdout/stderr unless True, if
 
 ## One-time Setup
 
-1. Check out the repository or save and upack a ZIP file of the repository.
-```
-$ git clone https://github.com/GoogleCloudPlatform/compute-cassandra-python.git
-$ cd compute-cassandra-python
-```
+1. Check out this repository or save and upack a ZIP file of this repository.
+  ```
+  $ git clone https://github.com/GoogleCloudPlatform/compute-cassandra-python.git
+  $ cd compute-cassandra-python
+  ```
 
-1. Set up authorization.  Please make sure to specify your *Project ID* (not
-the project name or number).  To find your Project ID, log into the 
-[Cloud Console](https://cloud.google.com/console/) and look in the upper
-left corner under your project.  Once you have your Project ID, run the
-following command to authenticate:
+1. Set up authorization. After downloading the Google Cloud SDK, unpack it and
+execute the included `install.sh` script. You can set up authorization and
+setting the default Project ID with:
   ```
-  $ gcutil auth --project_id=YOUR_PROJECT_ID
+  $ gcloud auth login
   ```
-You will be prompted to open a URL in your browser.  You may need to log in
-with your Google credentials if you haven't already.  Click the "Allow access"
-button.  Next, copy/paste the verification code in your terminal.  Then run
-the following command to cache your Project ID for so the included scripts
-can reference your Project ID:
-  ```
-  $ gcutil getproject --project_id=YOUR_PROJECT_ID --cache_flag_values
-  ```
+Your browser will either load up a permission authorization page or a URL will
+be generated that you need to load in a browser. You will need to log in
+with your Google credentials if you haven't already and click the "Allow
+access" button. You may need to copy/paste the verification code in your
+terminal. You will also be prompted to enter your default Project ID.
 
 1. Networking firewall rules. If you want to access the cluster over its
 external ephemeral IP addresses, you should consider opening up port 9160 
@@ -146,24 +145,32 @@ for the Thrift protocol and 9042 for CQL clients.  By default, internal IP
 traffic is open so no other rules should be necessary.  You can open these 
 ports with the following comment (assuming you want to use the 'default' 
 network):
-    ```
-    $ gcutil addfirewall cassandra-rule --allowed="tcp:9042,tcp:9160" --network="default" --description="Allow external Cassandra Thrift/CQL connections"
-    ```
+  ```
+  $ gcutil addfirewall cassandra-rule --allowed="tcp:9042,tcp:9160" --network="default" --description="Allow external Cassandra Thrift/CQL connections"
+  ```
+1. Upload the JRE install file to a Google Cloud Storage bucket. After you
+have downloaded the JRE 1.7 install file, you will need to upload it to a
+Google Cloud Storage bucket. Make sure to update `tools/common.py` and set
+the `GCS_BUCKET` variable to your bucket name. Also adjust the JRE7 variables
+if you're using a different version of the installer. The `gsutil` utility is
+included in the Cloud SDK and you can use the following commands to create a
+bucket and upload the JRE file:
+  ```
+  $ gsutil mb gs://mybucket
+  $ gsutil cp jre-7u51-linu-x64.tar.gz gs://mybucket
+  ```
 
 ## Creating the Cluster
-
-1. As stated above in the Java section, please make sure you have downloaded
-`jre-6u45-linux-x64.bin` and saved the file locally.
 
 1. Create the new cluster using the provided script.
 
     ```
-    $ ./tools/create_cluster.py path/to/jre-6u45-linux-x64.bin
+    $ ./tools/create_cluster.py
     ```
 
 1. Go get a cup of tea (or other libation to the prophet
 [Cassandra](http://en.wikipedia.org/wiki/Cassandra)). This will take
-upwards of 10 minutes.  Assuming the script completes with no errors, you
+around 10 minutes.  Assuming the script completes with no errors, you
 will see something similar to:
 
     ```
@@ -186,7 +193,7 @@ will see something similar to:
     --> Attempting to start cassandra on node cassnode-a-1 UP
     --> Attempting to start cassandra on node cassnode-a-0 UP
     => Cassandra cluster is up and running on all nodes
-    => Sleeping 60 seconds to give nodes time to join cluster
+    => Sleeping 30 seconds to give nodes time to join cluster
     => Output from node cassnode-b-1 and 'nodetool status'
     Datacenter: ZONE1
     =================
@@ -209,15 +216,13 @@ will see something similar to:
 ### So what just happened?
 
 1. The first thing the script does is to find a US-based region that has at
-least two zones in that region also in the UP state (e.g. not under a
-maintenance window).  In the output above, the script selects zones
-`us-central1-a` and `us-central1-b` in region `us-central1`.
+least two zones in that region also in the UP state. In the output above, the
+script selects zones `us-central1-a` and `us-central1-b` in region
+`us-central1`.
 1. Next, the script creates 3 `n1-standard-1` instances running `debian-7`
 in each zone.  The nodename is computed by concatenating the NODE_PREFIX
 defined in `tools/common.py`, a dash, the zone designator, another dash,
 and an incrementing integer (e.g. `cassnode-a-0`, `cassnode-a-1`, ...).
-1. The script then uses the `gcutil push` feature to upload the JRE file to
-each node in the cluster.
 1. Now that each node in the cluster is up and running, the script then
 uses some of that node information to create a customized install script
 based on the included `tools/node_config_tmpl` file and saves that to
@@ -225,38 +230,47 @@ based on the included `tools/node_config_tmpl` file and saves that to
 1. Next, the generated install script, `tools/node_config_tmpl.sh` executes
 on each node in the cluster.  The install script handles updating Debian
 packages, installing Cassandra, setting up the Cassandra configuration files,
-and installing the JRE that was uploaded to each node.
+fetching the JRE install file from Google Cloud Storage and installing it.
 1. The Cassandra service is started on two SEED nodes, one in each
 zone.  In the example above, this was `cassnode-a-2` and `cassnode-b-1` which
 were randomly chosen.  The remaining non-SEED nodes are then also brought up.
-1. Finally, the script pauses for a minute to ensure all nodes have had a
-chance to discover each other and exchange data via the gossip protocol.  To
-verify that the Cassandra cluster is actually running, the `nodetool status`
-command is run against a random node in the cluster.  Ideally, you will see
-an entry for all 6 nodes in the cluster, 3 per zone.
+1. Finally, the script pauses to ensure all nodes have had a chance to
+discover each other and exchange data via the gossip protocol.  To verify that
+the Cassandra cluster is actually running, the `nodetool status` command is
+run against a random node in the cluster.  Ideally, you will see an entry for
+all 6 nodes in the cluster, 3 per zone.
 
 ## Destroying the cluster
 
 There is a script that will delete all nodes with names starting with the
 NODE_PREFIX.  You can use this to purge the cluster if something goes wrong
-and want to start over, or if you're done with the guide and don't want to
+and you want to start over, or if you're done with the guide and don't want to
 be charged for running instances.  It will list out the matching instances
 and prompt you before actually deleting the cluster.
 
-Note that all data will be permanently deleted (recall that these instances
-are only using *scratch disks*).  The script does not gracefully shutdown
-the Cassandra service or otherwise check for active usage.
-
+Note that all data will be permanently deleted. The script intentionally
+deletes the persistent disks leaving nothing behind. The script also does not
+gracefully shutdown the Cassandra service or otherwise check for active usage.
   ```
   $ ./tools/destroy_cluster.py
   ```
 
 Once the cluster is down, you may also want to delete the firewall rule
 that allows external Thrift/CQL communication.  You can do that with:
-
   ```
   $ gcutil deletefirewall cassandra-rule
   ```
+
+### Keeping your disks
+
+Since the cluster uses persistent disks, you may just want to terminate the
+running instances without deleting the persistent disks. Then at a later time,
+you can create new instances and re-use the same disks. This is a great cost
+savings technique if you'd like to tinker with the cluster once in a while
+over an extended time period without having to rebuild it from scratch each
+time. However, there are no included scripts to support this technique but
+you can use either `gcutil` or the Cloud Console to terminate instances
+without deleting their disks.
 
 ## CQL: Getting Started
 
@@ -279,7 +293,7 @@ a snippet of the token distribution.  For instance,
   ```
   $ cqlsh
   Connected to GCECassandraCluster at localhost:9160.
-  [cqlsh 3.0.2 | Cassandra 1.2.5 | CQL spec 3.0.0 | Thrift protocol 19.36.0]
+  [cqlsh 4.1.0 | Cassandra 2.0.4 | CQL spec 3.1.1 | Thrift protocol 19.39.0]
   Use HELP for help.
   cqlsh> create keyspace demo with replication =
      ... {'class': 'NetworkTopologyStrategy', 'ZONE1': 2, 'ZONE2': 2};
@@ -328,9 +342,16 @@ Next, you can create a few tables and insert some sample data.
           ... ('Gimli', 'Dwarf', 'A main character in the LotR',
           ... {'The Fellowship of the Ring', 'The Two Towers',
           ... 'The Return of the King', 'Unfinished Tales'});
+  cqlsh:demo> insert into characters (name,type,description,appearances) values
+          ... ('Legolas', 'Elf', 'A main character in the LotR',
+          ... {'The Fellowship of the Ring', 'The Two Towers',
+          ... 'The Return of the King'});
+
   cqlsh:demo> select name, appearances from characters where type = 'Hobbit';
   Bad Request: No indexed columns present in by-columns clause with Equal operator
+
   cqlsh:demo> create index type_idx on characters(type);
+
   cqlsh:demo> select name, appearances from characters where type = 'Hobbit';
    name          | appearances
   ---------------+----------------------------------------------------------------------------------------------------------
@@ -346,7 +367,7 @@ examples, the replication factor was set to 2 for each zone implying that
 data exists in two nodes in each zone.
 
   ```
-  $ gcutil ssh --zone us-central1-a cassnode-a-2
+  $ gcutil ssh --zone us-central1-a cassnode-b-1
   $ nodetool getendpoints demo characters name
   10.240.101.202  # cassnode-a-0
   10.240.155.155  # cassnode-a-2
@@ -360,20 +381,17 @@ data exists in two nodes in each zone.
   ```
 ## Debugging / Troubleshooting
 
-1. Make sure that you cached your Project ID with `gcutil` as stated in the
-One-time Setup section above.  The scripts assume that the Project ID has
-been cached and will likely fail unless you've cached your Project ID.
-
 1. Enable extra command-line output by toggling the VERBOSE variable to `True`
 in the `tools/common.py` file. When you re-run a script with that enabled, you
-will see all of the standard output and error messages from `gcutil`.
+will see all of the standard output and error messages from `gcutil` and
+the instance commands.
 
 1. In order to understand what's going on with a cluster deployment with these
 scripts, you will likely need to either use the web console and check the
 instance's serial output or SSH into the instance and monitor log files.  In
 addition to standard Linux log files, you may need to consult the Cassandra
 log files, especially:
- * `/var/log/cassandra/output.log` - Cassandra log
+ * `/var/log/cassandra/system.log` - Cassandra log
 
 1. Ensure that your firewall rule is enabled so that the Cassandra nodes
 are accessible by both Thrift and CQL protocols.
@@ -397,7 +415,7 @@ for Cassandra deployments by:
 * The (under the hood) capabilities of `gcutil` to easily manage your instances
 * The ease with which a Cassandra cluster can be created and destroyed
 
-### Extending this guide with Metadata startup scripts
+### Extending this guide
 
 This guide did not take advantage of a powerful GCE feature that allows a
 newly created instance to execute a
@@ -410,12 +428,8 @@ Using this feature, additional Cassandra nodes could quickly and easily be
 created and automatically configured as soon as they finished booting.
 This could be accomplished by,
 
- * Pre-download the Oracle JRE and upload it to a bucket in
-   [Google Cloud Storage](https://cloud.google.com/products/cloud-storage)
-   (GCS) after agreeing to the licensing terms.
  * Modify the `tools/node_configure_tmpl` script to be executed as a Metadata
    startup-script.
- * Modify the startup-script to download the Oracle JRE from the GCS bucket.
  * As nodes are created/destroyed, use the
    [Metadata service](https://developers.google.com/compute/docs/metadata) to
    store SEED IP addresses and a newly computed PropertyFileSnitch file

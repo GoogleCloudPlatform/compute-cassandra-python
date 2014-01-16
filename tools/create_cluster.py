@@ -232,17 +232,15 @@ def main():
 
     # Create the nodes, upload/install JRE, customize/execute config script
     create_nodes(zones)
-    time.sleep(20) # wait 20s for ssh to start
     cluster = get_cluster()
     seed_data, script_path = customize_config_script(cluster)
     configure_nodes(cluster, script_path)
-    time.sleep(20) # wait 20s to start up nodes
 
     # Bring up the cluster and give it a minute for nodes to join.
     start_cluster(seed_data, cluster)
     print("=> Cassandra cluster is up and running on all nodes")
-    print("=> Sleeping 60 seconds to give nodes time to join cluster")
-    time.sleep(60)
+    print("=> Sleeping 30 seconds to give nodes time to join cluster")
+    time.sleep(30)
 
     # Run nodetool status on a node and display output.
     verify_cluster(cluster)
