@@ -122,6 +122,7 @@ VERBOSE = False                # eat gcutil's stdout/stderr unless True, if
 ## One-time Setup
 
 1. Check out this repository or save and upack a ZIP file of this repository.
+
   ```
   $ git clone https://github.com/GoogleCloudPlatform/compute-cassandra-python.git
   $ cd compute-cassandra-python
@@ -130,9 +131,11 @@ VERBOSE = False                # eat gcutil's stdout/stderr unless True, if
 1. Set up authorization. After downloading the Google Cloud SDK, unpack it and
 execute the included `install.sh` script. You can set up authorization and
 setting the default Project ID with:
+
   ```
   $ gcloud auth login
   ```
+
 Your browser will either load up a permission authorization page or a URL will
 be generated that you need to load in a browser. You will need to log in
 with your Google credentials if you haven't already and click the "Allow
@@ -145,19 +148,19 @@ for the Thrift protocol and 9042 for CQL clients.  By default, internal IP
 traffic is open so no other rules should be necessary.  You can open these 
 ports with the following comment (assuming you want to use the 'default' 
 network):
+
   ```
   $ gcutil addfirewall cassandra-rule --allowed="tcp:9042,tcp:9160" --network="default" --description="Allow external Cassandra Thrift/CQL connections"
   ```
+
 1. Upload the JRE install file to a Google Cloud Storage bucket. After you
 have downloaded the JRE 1.7 install file, you will need to upload it to a
 Google Cloud Storage bucket. Make sure to update `tools/common.py`  to specify
 your bucket name and adjust the JRE7 variables if needed. The `gsutil` utility
-is included in the Cloud SDK. Create a bucket with:
+is included in the Cloud SDK. Create a bucket and upload the JRE with:
+
   ```
   $ gsutil mb gs://mybucket
-  ```
-Then upload the JRE with:
-  ```
   $ gsutil cp jre-7u51-linu-x64.tar.gz gs://mybucket
   ```
 
