@@ -34,7 +34,8 @@ def destroy_nodes(cluster):
             print "...deleting node %s in zone %s" % (node['name'], node['zone'])
             _ = subprocess.call(["gcutil",
                     "--service_version=%s" % API_VERSION, "deleteinstance",
-                    "-f", "--zone=%s" % node['zone'], node['name']],
+                    "-f", "--zone=%s" % node['zone'],
+                    "--delete_boot_pd", node['name']],
                     stdout=NULL, stderr=NULL)
 
 
@@ -46,23 +47,25 @@ def main():
         print "No nodes found matching NODE_PREFIX '%s'" % NODE_PREFIX
         sys.exit(0)
 
-    print "*************************************************************"
-    print "************************* WARNING ***************************"
-    print "*************************************************************"
-    print "You are about to delete ALL of the following instances.  This"
-    print "operation can *NOT* be undone and ALL data will be lost."
+    print "*****************************************************************"
+    print "*************************** WARNING *****************************"
+    print "*****************************************************************"
+    print "You are about to delete ALL of the following instances including."
+    print "their boot disks.  This operation can *NOT* be undone and ALL"
+    print "data will be lost."
     print ""
     for z in cluster.keys():
         print "=> Nodes for Zone '%s'" % z
         for node in cluster[z]:
             print "--> %s" % node['name']
-    answer = raw_input("\nAre you SURE you want to delete these nodes [y|N]? ")
+    answer = raw_input(
+        "\nAre you SURE you want to delete these nodes and their disks [y|N]? ")
     if answer.lower() not in ["y", "yes"]:
         print "Ok, nothing to do then."
         sys.exit(0)
 
     destroy_nodes(cluster)
-    print "Complete.    Nodes deleted."
+    print "Complete.    Nodes and disks deleted."
 
 if __name__ == '__main__':
     main()

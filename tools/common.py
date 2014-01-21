@@ -29,31 +29,52 @@ NODE_PREFIX = "cassnode"       # All nodenames begin with this string.  This is
 
 MACHINE_TYPE = "n1-standard-1" # The machine type used for all cluster nodes
 
-API_VERSION = "v1beta15"       # GCE API version
+API_VERSION = "v1"             # GCE API version
 
 WAIT_MAX = 10                  # Max wait-iterations for startup-script, the
                                # delay between each iteration is 20 seconds
 
-JRE6_VERSION = "jre1.6.0_45"   # Path version string of extracted JRE
-JRE6_INSTALL = "jre-6u45-linux-x64.bin" # Basenamne of downloaded JRE file
+SCOPES = "userinfo-email,compute-rw,storage-full" # Scopes set to match same
+                               # default scopes as Cloud Console
+
+GCE_USERNAME = ""              # Use this to override the local environment.
+                               # This username must exist on the newly created
+                               # GCE instances in order to fetch the JRE
+                               # install file from GCS
+
+GCS_BUCKET = "mybucket"        # Specify bucket housing JRE7 install file
+JRE7_INSTALL = "jre-7u51-linux-x64.tar.gz" # Basenamne of downloaded JRE file
+JRE7_VERSION = "jre1.7.0_51"   # Path version string of extracted JRE
 
 VERBOSE = False                # Eat gcutil's stdout/stderr unless True. If
                                # debugging script issues, set this to True
                                # and re-run the scripts
 #############################################################################
-import subprocess
-import os
-import sys
 
 # Moving below configuration block since the startup script only
 # works on Debian and was only tested with Wheezy images.
 IMAGE = "debian-7"
+
+import subprocess
+import os
+import sys
 
 if VERBOSE:
   NULL = None
 else:
   NULL = open(os.devnull, "w")
 BE = BaseException
+
+# See above - if the GCE_USERNAME is not set, attempt to grab it from the
+# local user's environment. This username will be used to execute 'gsutil'
+# on the new GCE instances to fetch the JRE installer from the defined
+# GCS_BUCKET.
+if not GCE_USERNAME:
+    GCE_USERNAME = (os.getenv('USER')
+            or os.getenv('LOGNAME')
+            or os.getenv('HOME').split(os.sep)[-1])
+    if not GCE_USERNAME:
+        raise BE("Must set GCE_USERNAME in tools/common.py")
 
 # Internal data structure for the cluster is a dict by 'zone', with a list
 # of dicts containing 'name' and 'ip'
@@ -71,15 +92,15 @@ def get_cluster():
     csv = subprocess.check_output(["gcutil",
             "--service_version=%s" % API_VERSION, "--format=csv",
             "listinstances", "--filter=%s" % pattern],
-            stderr=NULL).split('\n')
+            stderr=NULL).split('\n')[1:-1]
     for line in csv:
+        # name,zone,status,network-ip,external-ip
         p = line.split(',')
-        if p[0].startswith(NODE_PREFIX):
-            zone = p[7].split('/')[-1]
-            if cluster.has_key(zone):
-                cluster[zone].append({'name':p[0], 'ip':p[4], 'zone':zone})
-            else:
-                cluster[zone] = [{'name':p[0], 'ip':p[4], 'zone':zone}]
+        zone = p[1]
+        if zone in cluster:
+            cluster[zone].append({'name':p[0], 'ip':p[3], 'zone':zone})
+        else:
+            cluster[zone] = [{'name':p[0], 'ip':p[3], 'zone':zone}]
     return cluster
 
 # Return the image URL that matches IMAGE defined above

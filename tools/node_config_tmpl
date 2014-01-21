@@ -18,15 +18,19 @@
 # https://github.com/GoogleCloudPlatform/compute-cassandra-python
 
 # This script is expecting the user to accept the Oracle EULA and download:
-# http://download.oracle.com/otn/java/jdk/6u45-b06/jre-6u45-linux-x64.bin
-jre_install_file=@JRE6_INSTALL@
-jre_version=@JRE6_VERSION@
+# http://download.oracle.com/otn-pub/java/jdk/7u51-b13/jre-7u51-linux-x64.tar.gz
+jre_install_file=@JRE7_INSTALL@
+jre_version=@JRE7_VERSION@
+gcs_bucket=@GCS_BUCKET@
+gce_username=@GCE_USERNAME@
 
+# adapted from,
+# http://www.datastax.com/documentation/cassandra/2.0/webhelp/index.html#cassandra/install/installDeb_t.html
 echo 'deb http://debian.datastax.com/community stable main' >> /etc/apt/sources.list
 curl -sL http://debian.datastax.com/debian/repo_key | /usr/bin/apt-key add - >/dev/null
 apt-get -y -qq update
 apt-get -y -qq upgrade
-apt-get -y -qq install dsc12 libjna-java
+apt-get -y -qq install dsc20 libjna-java
 service cassandra stop
 rm -rf /var/lib/cassandra/*
 
@@ -38,18 +42,32 @@ sed -i "s|^listen_address: localhost$|listen_address: ${intip}|" $CONF
 sed -i "s|^rpc_address: localhost$|rpc_address: 0.0.0.0|" $CONF
 sed -i "s|^# num_tokens: 256$|num_tokens: 256|" $CONF
 sed -i "s|^endpoint_snitch: SimpleSnitch$|endpoint_snitch: PropertyFileSnitch|" $CONF
-sed -i "s|seeds: \"127.0.0.1\"|seeds: 127.0.0.1,@SEED_IPS@|" $CONF
+sed -i "s|seeds: \"127.0.0.1\"|seeds: \"@SEED_IPS@\"|" $CONF
+echo "" >> $CONF
+echo "##############################################################" >> $CONF
+echo "##############################################################" >> $CONF
+echo "# WARNING!! Remove 'auto_bootstrap' if you intend on using" >> $CONF
+echo "#           this as a long running cluster. This setting is" >> $CONF
+echo "#           *ONLY* intended for bootstrapping a fresh cluster" >>  $CONF
+echo "#           with NO EXISTING DATA. See the following,        " >>  $CONF
+echo "#           http://goo.gl/v5wdBA                             " >>  $CONF
+echo "auto_bootstrap: false" >> $CONF
+echo "##############################################################" >> $CONF
+echo "##############################################################" >> $CONF
 cat > /etc/cassandra/cassandra-topology.properties <<EOF
 @SNITCH_TEXT@
 EOF
 
+# Assume the JRE install file has already been uploaded to the GCS bucket, so
+# use the GCE username to fetch it from GCS
+su -lc "gsutil cp gs://${gcs_bucket}/${jre_install_file} /tmp/${jre_install_file}" ${gce_username}
+
 # Set up Java per,
-# http://www.datastax.com/documentation/cassandra/1.2/index.html#cassandra/install/installJreDeb.html
-cd /usr/java/latest
-chmod +x ${jre_install_file}
-./${jre_install_file}
-update-alternatives --install "/usr/bin/java" "java" "/usr/java/latest/${jre_version}/bin/java" 1
-update-alternatives --set java /usr/java/latest/${jre_version}/bin/java
+# http://www.datastax.com/documentation/cassandra/2.0/webhelp/cassandra/install/installJreDeb.html
+mkdir -p /usr/lib/jvm
+tar zxvf /tmp/${jre_install_file} -C /usr/lib/jvm
+update-alternatives --install "/usr/bin/java" "java" "/usr/lib/jvm/${jre_version}/bin/java" 1
+update-alternatives --set java /usr/lib/jvm/${jre_version}/bin/java
 
 touch /tmp/cassandra_startup_script_complete
 exit 0
