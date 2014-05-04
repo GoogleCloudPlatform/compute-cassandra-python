@@ -232,6 +232,8 @@ def main():
 
     # Create the nodes, upload/install JRE, customize/execute config script
     create_nodes(zones)
+    print("=> Waiting 10 seconds before attempting to connect")
+    time.sleep(10)
     cluster = get_cluster()
     seed_data, script_path = customize_config_script(cluster)
     configure_nodes(cluster, script_path)
