@@ -1,3 +1,9 @@
+![status: inactive](https://img.shields.io/badge/status-inactive-red.svg)
+
+This project is no longer actively developed or maintained.  
+
+For more information about Cassandra on Compute Engine, refer to our [solutions page](https://cloud.google.com/solutions/cassandra/).
+
 ## compute-cassandra-python
 
 This repository is intended to be a guideline for setting up a basic working
